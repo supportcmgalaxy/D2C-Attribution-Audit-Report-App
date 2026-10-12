@@ -5,7 +5,7 @@
 import { AUDIT_QUESTIONS, AUDIT_CATEGORIES, ANSWER_OPTIONS } from './auditData.js';
 import { analyzeAuditAnswers, evaluateAnswer } from './rulesEngine.js';
 import { initUTMTracking, getStoredUTM, trackEvent } from './tracking.js';
-import { apiService } from './api.js?v=2.2';
+import { apiService } from './api.js?v=2.3';
 
 class CMGalaxyAuditApp {
   constructor() {

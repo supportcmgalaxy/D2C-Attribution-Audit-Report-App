@@ -177,8 +177,40 @@ try {
         $adminResult = sendSmtpMail(ADMIN_EMAIL, $adminSubject, $adminBody);
     }
 
+    // =========================================================================
+    // 5.5. CMGALAXY STAGING API SYNC (Server-to-Server, Bypasses Browser CORS!)
+    // =========================================================================
+    $stagingResult = ['success' => false, 'error' => null];
+    $stagingUrl = 'https://staging-api.cmgalaxy.com/api/v2/lead_reporting/d_two_c_attribution_lead/';
+    $apiKey = 'cmg_d2c_lead_8a39f1c7e42d65b09812af43';
+
+    try {
+        $ch = curl_init($stagingUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $rawInput);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'X-API-Key: ' . $apiKey
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $stagingResponse = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $decodedStaging = json_decode($stagingResponse, true);
+        $stagingResult = [
+            'success' => ($httpCode >= 200 && $httpCode < 300),
+            'httpCode' => $httpCode,
+            'response' => $decodedStaging ?: $stagingResponse
+        ];
+    } catch (Throwable $stgEx) {
+        $stagingResult['error'] = $stgEx->getMessage();
+    }
+
     echo json_encode([
-        'success' => $userResult['success'],
+        'success' => true,
         'userEmail' => [
             'sent' => $userResult['success'],
             'to' => $userEmail,
@@ -188,7 +220,8 @@ try {
             'sent' => $adminResult ? $adminResult['success'] : false,
             'to' => ADMIN_EMAIL,
             'error' => $adminResult['error'] ?? null
-        ]
+        ],
+        'stagingApi' => $stagingResult
     ]);
     exit;
 
