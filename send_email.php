@@ -24,8 +24,8 @@ try {
     // =========================================================================
     define('SMTP_HOST', 'mail.cybermedia.co.in');
     define('SMTP_PORT', 587);
-    define('SMTP_USER', 'support@cmgalaxy.com');
-    define('SMTP_PASS', 'hAne7KIF&mRyJ');
+    define('SMTP_USER', 'abubakarm@cmrsl.net');
+    define('SMTP_PASS', 'Ym#8$ar@1');
     define('FROM_NAME', 'CMGalaxy Support');
     define('ADMIN_EMAIL', 'support@cmgalaxy.com');
 
