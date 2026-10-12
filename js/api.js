@@ -240,11 +240,29 @@ export const apiService = {
 
   /**
    * Syncs lead to CMGalaxy Staging Lead Reporting API.
-   * Handled reliably server-side in send_email.php to avoid browser CORS preflight restrictions.
+   * Dispatches direct browser network request so it shows in Network tab.
    */
   async createCMGalaxyUser(userData, leadRecord) {
-    console.log('[CMGalaxy Staging API] 🚀 Sync handled server-side via send_email.php');
-    return { success: true, syncedViaServer: true };
+    const STAGING_URL = 'https://staging-api.cmgalaxy.com/api/v2/lead_reporting/d_two_c_attribution_lead/';
+    const API_KEY = 'cmg_d2c_lead_8a39f1c7e42d65b09812af43';
+
+    try {
+      console.log('[CMGalaxy Staging API] 📡 Dispatching lead directly from browser:', STAGING_URL, leadRecord);
+      const response = await fetch(STAGING_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': API_KEY
+        },
+        body: JSON.stringify(leadRecord)
+      });
+      const data = await response.json();
+      console.log('[CMGalaxy Staging API] 🚀 Staging API response:', data);
+      return { success: response.ok, data };
+    } catch (err) {
+      console.warn('[CMGalaxy Staging API] ⚠️ Direct browser call notification:', err.message);
+      return { success: false, error: err.message };
+    }
   },
 
   /**
