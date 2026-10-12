@@ -5,7 +5,7 @@
 import { AUDIT_QUESTIONS, AUDIT_CATEGORIES, ANSWER_OPTIONS } from './auditData.js';
 import { analyzeAuditAnswers, evaluateAnswer } from './rulesEngine.js';
 import { initUTMTracking, getStoredUTM, trackEvent } from './tracking.js';
-import { apiService } from './api.js';
+import { apiService } from './api.js?v=2.2';
 
 class CMGalaxyAuditApp {
   constructor() {
@@ -343,6 +343,7 @@ class CMGalaxyAuditApp {
   }
 
   async startAuditFlow() {
+    this.currentQuestionIndex = 0;
     const res = await apiService.startAudit();
     this.activeSession = res.session;
 
@@ -566,6 +567,10 @@ class CMGalaxyAuditApp {
       trackEvent('report_viewed', {
         sessionId: this.activeSession.id
       });
+
+      // Clear session from storage so next attempt starts completely fresh!
+      apiService.resetAudit();
+      if (this.leadForm) this.leadForm.reset();
 
       // Reveal personalized report immediately!
       this.showReport(true);

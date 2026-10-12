@@ -118,20 +118,6 @@ try {
             <p style='margin: 0; font-size: 13px; color: #64748b;'><strong>Submitted At:</strong> {$submittedAt}</p>
           </div>
 
-          <h3 style='font-size: 16px; color: #0f172a; margin-top: 24px;'>Summary of Your 12 Answers:</h3>
-          <table style='width: 100%; border-collapse: collapse; margin-top: 12px;'>
-            <thead>
-              <tr style='background: #f8fafc; text-align: left;'>
-                <th style='padding: 8px 12px; font-size: 13px; color: #64748b;'>Check Area</th>
-                <th style='padding: 8px 12px; font-size: 13px; color: #64748b;'>Your Answer</th>
-                <th style='padding: 8px 12px; font-size: 13px; color: #64748b;'>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {$answersHtml}
-            </tbody>
-          </table>
-
           <p style='margin-top: 24px; font-size: 14px; color: #64748b;'>Our team of attribution specialists is reviewing your findings and will be in touch if your setup requires priority calibration.</p>
           <p style='margin-top: 16px; font-size: 14px; color: #334155;'>Best regards,<br><strong>CMGalaxy Support Team</strong></p>
         </div>

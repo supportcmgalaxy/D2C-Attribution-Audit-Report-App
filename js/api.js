@@ -37,7 +37,11 @@ export const apiService = {
       try {
         const stored = localStorage.getItem(AUDIT_STORAGE_KEY);
         if (stored) {
-          session = JSON.parse(stored);
+          const parsed = JSON.parse(stored);
+          // Agar user ne form submit kar diya hai, toh agla attempt fresh hoga
+          if (!parsed.completedAt && !parsed.email) {
+            session = parsed;
+          }
         }
       } catch (e) {
         console.warn('LocalStorage error', e);
@@ -193,9 +197,11 @@ export const apiService = {
       localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(existingLeads.slice(0, 20)));
     } catch (e) {}
 
-    // Asynchronously simulate email sending and CMGalaxy user provisioning
-    this.sendReportEmail(leadData.email, fullLeadRecord).catch(console.error);
-    this.createCMGalaxyUser(leadData, fullLeadRecord).catch(console.error);
+    // Dispatch email and Staging API sync in parallel
+    await Promise.allSettled([
+      this.sendReportEmail(leadData.email, fullLeadRecord),
+      this.createCMGalaxyUser(leadData, fullLeadRecord)
+    ]);
 
     return {
       success: true,
@@ -240,6 +246,7 @@ export const apiService = {
     const API_KEY = 'cmg_d2c_lead_8a39f1c7e42d65b09812af43';
 
     try {
+      console.log('[CMGalaxy Staging API] 📡 Dispatching lead to Staging API:', STAGING_URL, leadRecord);
       const response = await fetch(STAGING_URL, {
         method: 'POST',
         headers: {
@@ -249,7 +256,7 @@ export const apiService = {
         body: JSON.stringify(leadRecord)
       });
       const data = await response.json();
-      console.log('[CMGalaxy Staging API] 🚀 Lead successfully synced:', data);
+      console.log('[CMGalaxy Staging API] 🚀 Response received:', data);
       return { success: response.ok, data };
     } catch (err) {
       console.warn('[CMGalaxy Staging API] ⚠️ Failed to sync to Staging API:', err.message);
@@ -262,7 +269,10 @@ export const apiService = {
    */
   resetAudit() {
     try {
-      localStorage.removeItem(AUDIT_STORAGE_KEY);
+      this._mockMemorySession = null;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(AUDIT_STORAGE_KEY);
+      }
     } catch (e) {}
   }
 };
