@@ -6,6 +6,7 @@
 
 import { getStoredUTM } from './tracking.js';
 import { analyzeAuditAnswers, evaluateAnswer } from './rulesEngine.js';
+import { AUDIT_QUESTIONS } from './auditData.js';
 
 const AUDIT_STORAGE_KEY = 'cmgalaxy_active_audit_session';
 const LEADS_STORAGE_KEY = 'cmgalaxy_captured_leads';
@@ -146,9 +147,12 @@ export const apiService = {
 
     // Format all answers with their status and impact for sales
     const structuredAnswers = Object.entries(session.answers || {}).map(([qId, ans]) => {
-      const evaluated = evaluateAnswer(Number(qId), ans);
+      const qNum = Number(qId);
+      const evaluated = evaluateAnswer(qNum, ans);
+      const qData = AUDIT_QUESTIONS.find((q) => q.id === qNum);
       return {
-        questionId: Number(qId),
+        questionId: qNum,
+        title: qData ? qData.title : `Question ${qNum}`,
         answer: ans,
         status: evaluated.status,
         budgetImpact: evaluated.budgetImpact
@@ -229,15 +233,28 @@ export const apiService = {
   },
 
   /**
-   * Simulates CMGalaxy platform signup / lead creation in CRM.
+   * Syncs lead to CMGalaxy Staging Lead Reporting API.
    */
   async createCMGalaxyUser(userData, leadRecord) {
-    await mockNetworkDelay(500);
-    console.log(`[CMGalaxy CRM Sync] 🚀 Lead synced to CMGalaxy Platform & Sales Pipeline`, {
-      contact: userData,
-      leadId: leadRecord.id
-    });
-    return { success: true, synced: true };
+    const STAGING_URL = 'https://staging-api.cmgalaxy.com/api/v2/lead_reporting/d_two_c_attribution_lead/';
+    const API_KEY = 'cmg_d2c_lead_8a39f1c7e42d65b09812af43';
+
+    try {
+      const response = await fetch(STAGING_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': API_KEY
+        },
+        body: JSON.stringify(leadRecord)
+      });
+      const data = await response.json();
+      console.log('[CMGalaxy Staging API] 🚀 Lead successfully synced:', data);
+      return { success: response.ok, data };
+    } catch (err) {
+      console.warn('[CMGalaxy Staging API] ⚠️ Failed to sync to Staging API:', err.message);
+      return { success: false, error: err.message };
+    }
   },
 
   /**
