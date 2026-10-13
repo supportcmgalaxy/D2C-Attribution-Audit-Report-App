@@ -34,7 +34,10 @@ try {
     define('ADMIN_EMAIL', 'abubakarm@cmrsl.net');
 
     // Base URL of your site (no trailing slash) — used to build the public report link
-    define('SITE_URL', (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+    $isHttps = (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] == 1)) ||
+               (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+    $scheme = $isHttps ? 'https' : 'http';
+    define('SITE_URL', $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'd2c.cmgalaxy.com'));
 
     // =========================================================================
     // 1.5. 1-CLICK TEST MODE (Browser me direct test: send_email.php?test=1)
@@ -119,11 +122,13 @@ try {
     // =========================================================================
     $userSubject = "Your CMGalaxy D2C Attribution Audit Report — " . $userCompany;
 
+    $logoUrl = SITE_URL . '/assets/cmgalaxy-logo.png';
+
     // Build the CTA button for the PDF report link (only if the report was saved successfully)
     $reportLinkBlock = '';
     if ($reportPublicUrl) {
         $reportLinkBlock = "
-          <div style='text-align: center; margin: 28px 0 16px 0;'>
+          <div style='text-align: center; margin: 28px 0;'>
             <a href='{$reportPublicUrl}'
                style='display: inline-block; background: #0f172a;
                       color: #ffffff; text-decoration: none; padding: 14px 32px;
@@ -131,10 +136,7 @@ try {
                       letter-spacing: 0.3px; box-shadow: 0 4px 14px rgba(15,23,42,0.25);'>
               View My Attribution Report &rarr;
             </a>
-          </div>
-          <p style='font-size: 12px; color: #94a3b8; text-align: center; margin-top: 0; margin-bottom: 24px;'>
-            Or copy this link: <a href='{$reportPublicUrl}' style='color: #0284c7; text-decoration: underline;'>{$reportPublicUrl}</a>
-          </p>";
+          </div>";
     }
 
     $userBody = "
@@ -176,7 +178,12 @@ try {
 
           <p style='margin-top: 24px; font-size: 14px; color: #64748b; line-height: 1.6;'>Need help understanding your results? Simply reply to this email &mdash; we're happy to help.</p>
 
-          <p style='margin-top: 20px; font-size: 14px; color: #334155;'>Best regards,<br><strong>CMGALAXY Team</strong></p>
+          <p style='margin-top: 20px; font-size: 14px; color: #334155; margin-bottom: 12px;'>Best regards,<br><strong>CMGALAXY Team</strong></p>
+          <div style='margin-top: 14px;'>
+            <a href='https://www.cmgalaxy.com/' target='_blank' rel='noopener noreferrer' style='text-decoration: none; display: inline-block;'>
+              <img src='{$logoUrl}' alt='CMGalaxy' style='height: 28px; width: auto; max-width: 140px; display: block; border: 0;' />
+            </a>
+          </div>
         </div>
       </div>
     </body>
@@ -191,11 +198,12 @@ try {
     $adminReportBtn = '';
     if ($reportPublicUrl) {
         $adminReportBtn = "
-          <div style='margin: 20px 0;'>
+          <div style='text-align: center; margin: 24px 0;'>
             <a href='{$reportPublicUrl}'
-               style='display: inline-block; background: #0284c7; color: #ffffff;
-                      text-decoration: none; padding: 12px 24px; border-radius: 6px;
-                      font-size: 14px; font-weight: 600;'>
+               style='display: inline-block; background: #0f172a; color: #ffffff;
+                      text-decoration: none; padding: 13px 30px; border-radius: 50px;
+                      font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
+                      box-shadow: 0 4px 14px rgba(15,23,42,0.25);'>
               View Lead &amp; Audit Report &rarr;
             </a>
           </div>";
@@ -207,26 +215,47 @@ try {
     <head><meta charset='UTF-8'></head>
     <body style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;'>
       <div style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;'>
-        <div style='background: #0284c7; padding: 20px; color: #ffffff;'>
-          <h2 style='margin: 0; font-size: 18px;'>⚡ New D2C Attribution Audit Lead Captured</h2>
+        <div style='background: #0f172a; padding: 24px; color: #ffffff;'>
+          <h2 style='margin: 0; font-size: 20px; font-weight: 700;'>⚡ New D2C Attribution Audit Lead Captured</h2>
+          <p style='margin: 4px 0 0 0; color: #94a3b8; font-size: 14px;'>Lead notification for {$userCompany}</p>
         </div>
-        <div style='padding: 24px;'>
+        <div style='padding: 28px 24px;'>
           <p style='font-size: 15px; color: #334155; margin-top: 0;'>Hi Team,</p>
           <p style='font-size: 15px; color: #334155; line-height: 1.6;'>A new lead has completed all 12 questions of the Personalised Attribution Audit.</p>
 
-          <h3 style='margin-top: 20px; margin-bottom: 8px; font-size: 15px; color: #0f172a;'>Lead Details</h3>
-          <ul style='color: #334155; font-size: 14px; line-height: 1.8; list-style: none; padding-left: 0; margin-top: 4px;'>
-            <li><strong>Name:</strong> {$userName}</li>
-            <li><strong>Email:</strong> <a href='mailto:{$userEmail}' style='color: #0284c7;'>{$userEmail}</a></li>
-            <li><strong>Company:</strong> {$userCompany}</li>
-            <li><strong>Date:</strong> {$submissionDate}</li>
-          </ul>
+          <h3 style='margin-top: 24px; margin-bottom: 10px; font-size: 15px; font-weight: 700; color: #0f172a;'>Lead Details</h3>
+
+          <table style='width: 100%; border-collapse: collapse; margin: 12px 0 24px 0; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;'>
+            <tbody>
+              <tr>
+                <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; color: #64748b; width: 28%;'>Name</td>
+                <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 600; color: #0f172a;'>{$userName}</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; color: #64748b;'>Email</td>
+                <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #0284c7;'><a href='mailto:{$userEmail}' style='color: #0284c7; text-decoration: none;'>{$userEmail}</a></td>
+              </tr>
+              <tr>
+                <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; color: #64748b;'>Company</td>
+                <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 600; color: #0f172a;'>{$userCompany}</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px 16px; font-size: 13px; font-weight: 600; color: #64748b;'>Date</td>
+                <td style='padding: 10px 16px; font-size: 13px; color: #334155;'>{$submissionDate}</td>
+              </tr>
+            </tbody>
+          </table>
 
           {$adminReportBtn}
 
           <p style='font-size: 14px; color: #64748b; margin-top: 24px; line-height: 1.6;'>Please review the findings, update the CRM, and follow up as appropriate.</p>
 
-          <p style='font-size: 14px; color: #334155; margin-top: 16px;'>Regards,<br><strong>Attribution Audit System</strong></p>
+          <p style='margin-top: 20px; font-size: 14px; color: #334155; margin-bottom: 12px;'>Regards,<br><strong>Attribution Audit System</strong></p>
+          <div style='margin-top: 14px;'>
+            <a href='https://www.cmgalaxy.com/' target='_blank' rel='noopener noreferrer' style='text-decoration: none; display: inline-block;'>
+              <img src='{$logoUrl}' alt='CMGalaxy' style='height: 28px; width: auto; max-width: 140px; display: block; border: 0;' />
+            </a>
+          </div>
         </div>
       </div>
     </body>

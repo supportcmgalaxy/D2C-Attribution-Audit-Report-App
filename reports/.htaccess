@@ -1,1 +1,7 @@
 Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Return 404 Not Found if anyone accesses /reports/ directly
+    RewriteRule ^$ - [R=404,L]
+</IfModule>
