@@ -72,7 +72,7 @@ try {
         exit;
     }
 
-    $userName    = htmlspecialchars($data['lead']['name'] ?? 'User');
+    $userName    = htmlspecialchars(mb_convert_case(trim($data['lead']['name'] ?? 'User'), MB_CASE_TITLE, 'UTF-8'));
     $userEmail   = filter_var($data['lead']['email'] ?? '', FILTER_VALIDATE_EMAIL);
     $userCompany = htmlspecialchars($data['lead']['company'] ?? 'N/A');
     $auditId     = htmlspecialchars($data['id'] ?? 'N/A');
