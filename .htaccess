@@ -1,0 +1,13 @@
+# Disable directory browsing
+Options -Indexes
+
+# Block public browser access to .env and all dotfiles/sensitive files
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

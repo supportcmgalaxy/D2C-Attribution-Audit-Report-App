@@ -24,14 +24,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 try {
     // =========================================================================
-    // 1. SMTP CONFIGURATION
+    // 1. LOAD .ENV SECRETS & CONFIGURATION
     // =========================================================================
-    define('SMTP_HOST', 'mail.cybermedia.co.in');
-    define('SMTP_PORT', 587);
-    define('SMTP_USER', 'abubakarm@cmrsl.net');
-    define('SMTP_PASS', 'Ym#8$ar@1');
-    define('FROM_NAME', 'CMGalaxy Support');
-    define('ADMIN_EMAIL', 'abubakarm@cmrsl.net');
+    if (file_exists(__DIR__ . '/.env')) {
+        $envLines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($envLines as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#')) continue;
+            if (strpos($line, '=') !== false) {
+                [$envKey, $envVal] = explode('=', $line, 2);
+                $envKey = trim($envKey);
+                $envVal = trim($envVal);
+                if ((str_starts_with($envVal, '"') && str_ends_with($envVal, '"')) ||
+                    (str_starts_with($envVal, "'") && str_ends_with($envVal, "'"))) {
+                    $envVal = substr($envVal, 1, -1);
+                }
+                putenv("{$envKey}={$envVal}");
+                $_ENV[$envKey] = $envVal;
+            }
+        }
+    }
+
+    define('SMTP_HOST', trim((string)getenv('SMTP_HOST')));
+    define('SMTP_PORT', (int)getenv('SMTP_PORT'));
+    define('SMTP_USER', trim((string)getenv('SMTP_USER')));
+    define('SMTP_PASS', (string)getenv('SMTP_PASS'));
+    define('FROM_NAME', trim((string)getenv('FROM_NAME')));
+    define('ADMIN_EMAIL', trim((string)getenv('ADMIN_EMAIL')));
 
     // Base URL of your site (no trailing slash) — used to build the public report link
     $isHttps = (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] == 1)) ||
@@ -838,11 +857,19 @@ function generateReportPdf($userName, $userEmail, $userCompany, $auditId, $submi
 // 7. ROBUST SMTP SOCKET SENDER
 // =========================================================================
 function sendSmtpMail($toEmail, $subject, $htmlBody) {
-    $host = SMTP_HOST;
-    $port = SMTP_PORT;
-    $user = SMTP_USER;
-    $pass = SMTP_PASS;
-    $fromName = FROM_NAME;
+    $host = defined('SMTP_HOST') ? SMTP_HOST : '';
+    $port = defined('SMTP_PORT') ? SMTP_PORT : 0;
+    $user = defined('SMTP_USER') ? SMTP_USER : '';
+    $pass = defined('SMTP_PASS') ? SMTP_PASS : '';
+    $fromName = (defined('FROM_NAME') && FROM_NAME !== '') ? FROM_NAME : $user;
+
+    // Strict validation: Only send if all credentials exist in .env
+    if (empty($host) || empty($port) || empty($user) || empty($pass)) {
+        return [
+            'success' => false,
+            'error' => 'SMTP credentials missing. Please define SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in .env file.'
+        ];
+    }
 
     $timeout = 15;
     $isSSL = ($port == 465);
