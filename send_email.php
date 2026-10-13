@@ -111,21 +111,7 @@ try {
         $reportPublicUrl = null; // No URL if save failed
     }
 
-    // Build answers summary table
-    $answersHtml = '';
-    foreach ($answers as $ans) {
-        $qNum = htmlspecialchars($ans['questionId'] ?? '');
-        $qTitle = htmlspecialchars($ans['title'] ?? "Question #$qNum");
-        $qAnswer = strtoupper(htmlspecialchars($ans['answer'] ?? ''));
-        $qStatus = strtoupper(htmlspecialchars($ans['status'] ?? ''));
-        $statusColor = ($qStatus === 'RELIABLE') ? '#10b981' : (($qStatus === 'GAP') ? '#ef4444' : '#f59e0b');
 
-        $answersHtml .= "<tr>
-            <td style='padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px;'>#{$qNum} {$qTitle}</td>
-            <td style='padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: bold;'>{$qAnswer}</td>
-            <td style='padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: {$statusColor}; font-weight: bold;'>{$qStatus}</td>
-        </tr>";
-    }
 
     // =========================================================================
     // 3. USER EMAIL CONTENT
@@ -176,14 +162,14 @@ try {
 
           <!-- CTA Buttons -->
           <div style='text-align: center; margin: 28px 0;'>
-            <a href='https://cmgalaxy.com/book-a-demo'
+            <a href='https://cal.com/cmgalaxy/demo'
                style='display: inline-block; background: #0f172a; color: #ffffff;
                       text-decoration: none; padding: 12px 24px; border-radius: 8px;
                       font-size: 14px; font-weight: 600; margin: 6px 8px;
                       box-shadow: 0 2px 8px rgba(15,23,42,0.20);'>
               &#128197; Book a Demo
             </a>
-            <a href='https://cmgalaxy.com/sign-up'
+            <a href='https://platform.cmgalaxy.com/sign-up'
                style='display: inline-block; background: #0284c7; color: #ffffff;
                       text-decoration: none; padding: 12px 24px; border-radius: 8px;
                       font-size: 14px; font-weight: 600; margin: 6px 8px;
@@ -221,20 +207,6 @@ try {
             <li><strong>Audit ID:</strong> {$auditId}</li>
             <li><strong>Submitted At:</strong> {$submittedAt}</li>
           </ul>
-
-          <h3 style='margin-top: 24px; font-size: 16px; color: #0f172a;'>Audit Responses:</h3>
-          <table style='width: 100%; border-collapse: collapse; margin-top: 12px;'>
-            <thead>
-              <tr style='background: #f8fafc; text-align: left;'>
-                <th style='padding: 8px 12px; font-size: 13px; color: #64748b;'>Area</th>
-                <th style='padding: 8px 12px; font-size: 13px; color: #64748b;'>Answer</th>
-                <th style='padding: 8px 12px; font-size: 13px; color: #64748b;'>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {$answersHtml}
-            </tbody>
-          </table>
         </div>
       </div>
     </body>
