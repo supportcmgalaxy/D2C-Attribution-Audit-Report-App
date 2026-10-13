@@ -178,7 +178,7 @@ try {
 
           <p style='margin-top: 24px; font-size: 14px; color: #64748b; line-height: 1.6;'>Need help understanding your results? Simply reply to this email &mdash; we're happy to help.</p>
 
-          <p style='margin-top: 20px; font-size: 14px; color: #334155; margin-bottom: 12px;'>Best regards,<br><strong>CMGALAXY Team</strong></p>
+          <p style='margin-top: 20px; font-size: 14px; color: #334155; margin-bottom: 12px;'>Best regards,<br><strong>CMgalaxy Team</strong></p>
           <div style='margin-top: 14px;'>
             <a href='https://www.cmgalaxy.com/' target='_blank' rel='noopener noreferrer' style='text-decoration: none; display: inline-block;'>
               <img src='{$logoUrl}' alt='CMGalaxy' style='height: 28px; width: auto; max-width: 140px; display: block; border: 0;' />
@@ -200,10 +200,10 @@ try {
         $adminReportBtn = "
           <div style='text-align: center; margin: 24px 0;'>
             <a href='{$reportPublicUrl}'
-               style='display: inline-block; background: #0f172a; color: #ffffff;
+               style='display: inline-block; background: #34C759; color: #ffffff;
                       text-decoration: none; padding: 13px 30px; border-radius: 50px;
                       font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
-                      box-shadow: 0 4px 14px rgba(15,23,42,0.25);'>
+                      box-shadow: 0 3px 10px rgba(52,199,89,0.30);'>
               View Lead &amp; Audit Report &rarr;
             </a>
           </div>";
@@ -216,7 +216,7 @@ try {
     <body style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;'>
       <div style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;'>
         <div style='background: #0f172a; padding: 24px; color: #ffffff;'>
-          <h2 style='margin: 0; font-size: 20px; font-weight: 700;'>⚡ New D2C Attribution Audit Lead Captured</h2>
+          <h2 style='margin: 0; font-size: 20px; font-weight: 700;'>New D2C Attribution Audit Lead Captured</h2>
           <p style='margin: 4px 0 0 0; color: #94a3b8; font-size: 14px;'>Lead notification for {$userCompany}</p>
         </div>
         <div style='padding: 28px 24px;'>
@@ -250,7 +250,7 @@ try {
 
           <p style='font-size: 14px; color: #64748b; margin-top: 24px; line-height: 1.6;'>Please review the findings, update the CRM, and follow up as appropriate.</p>
 
-          <p style='margin-top: 20px; font-size: 14px; color: #334155; margin-bottom: 12px;'>Regards,<br><strong>Attribution Audit System</strong></p>
+          <p style='margin-top: 20px; font-size: 14px; color: #334155; margin-bottom: 12px;'>From:<br><a href='" . SITE_URL . "' target='_blank' rel='noopener noreferrer' style='color: #0284c7; text-decoration: none; font-weight: 600; font-size: 14px;'>" . SITE_URL . "</a></p>
           <div style='margin-top: 14px;'>
             <a href='https://www.cmgalaxy.com/' target='_blank' rel='noopener noreferrer' style='text-decoration: none; display: inline-block;'>
               <img src='{$logoUrl}' alt='CMGalaxy' style='height: 28px; width: auto; max-width: 140px; display: block; border: 0;' />
