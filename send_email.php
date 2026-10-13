@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/lib/SimplePDF.php';
 /**
  * CMGalaxy - SMTP Email Dispatcher for Audit Reports
  * v1.1 - Deployed via GitHub Actions CI/CD
@@ -7,6 +8,9 @@
 // Suppress raw PHP errors from breaking JSON output
 error_reporting(0);
 ini_set('display_errors', '0');
+
+// Timezone: India Standard Time (IST, UTC+5:30)
+date_default_timezone_set('Asia/Kolkata');
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');
@@ -27,7 +31,10 @@ try {
     define('SMTP_USER', 'abubakarm@cmrsl.net');
     define('SMTP_PASS', 'Ym#8$ar@1');
     define('FROM_NAME', 'CMGalaxy Support');
-    define('ADMIN_EMAIL', 'support@cmgalaxy.com');
+    define('ADMIN_EMAIL', 'abubakarm@cmrsl.net');
+
+    // Base URL of your site (no trailing slash) — used to build the public report link
+    define('SITE_URL', (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
 
     // =========================================================================
     // 1.5. 1-CLICK TEST MODE (Browser me direct test: send_email.php?test=1)
@@ -77,6 +84,33 @@ try {
         exit;
     }
 
+    // =========================================================================
+    // 2.5. SAVE PDF REPORT TO /reports/ FOLDER
+    // =========================================================================
+    // Filename: {name}-{YYYY-MM-DD}-{HHmmss}.pdf
+    // HHmmss timestamp ensures every submission = new unique file (never overwrites)
+    $safeNameSlug   = preg_replace('/[^a-zA-Z0-9_\-]/', '_', trim($data['lead']['name'] ?? 'User'));
+    $dateSlug       = date('Y-m-d');
+    $timeSlug       = date('His');   // e.g. 143022
+    $reportFileName = $safeNameSlug . '-' . $dateSlug . '-' . $timeSlug . '.pdf';
+    $reportsDir     = __DIR__ . '/reports';
+    $reportFilePath = $reportsDir . '/' . $reportFileName;
+    $reportPublicUrl = SITE_URL . '/reports/' . $reportFileName;
+
+    // Generate PDF and save it
+    $reportSaveResult = ['saved' => false, 'path' => null, 'url' => null, 'error' => null, 'filename' => $reportFileName];
+    if (!is_dir($reportsDir)) {
+        @mkdir($reportsDir, 0755, true);
+    }
+    $pdfBytes = generateReportPdf($userName, $userEmail, $userCompany, $auditId, $submittedAt, $answers);
+    $written  = file_put_contents($reportFilePath, $pdfBytes);
+    if ($written !== false) {
+        $reportSaveResult = ['saved' => true, 'path' => $reportFilePath, 'url' => $reportPublicUrl, 'filename' => $reportFileName, 'error' => null];
+    } else {
+        $reportSaveResult['error'] = 'Could not write PDF to: ' . $reportFilePath;
+        $reportPublicUrl = null; // No URL if save failed
+    }
+
     // Build answers summary table
     $answersHtml = '';
     foreach ($answers as $ans) {
@@ -98,6 +132,24 @@ try {
     // =========================================================================
     $userSubject = "Your CMGalaxy D2C Attribution Audit Report — " . $userCompany;
 
+    // Build the CTA button for the PDF report link (only if the report was saved successfully)
+    $reportLinkBlock = '';
+    if ($reportPublicUrl) {
+        $reportLinkBlock = "
+          <div style='text-align: center; margin: 28px 0;'>
+            <a href='{$reportPublicUrl}'
+               style='display: inline-block; background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+                      color: #ffffff; text-decoration: none; padding: 14px 32px;
+                      border-radius: 8px; font-size: 15px; font-weight: 600;
+                      letter-spacing: 0.3px; box-shadow: 0 4px 14px rgba(15,23,42,0.25);'>
+              &#128202; Download Your Attribution Report (PDF) &rarr;
+            </a>
+          </div>
+          <p style='font-size: 12px; color: #94a3b8; text-align: center; margin-top: -12px;'>
+            Or copy this link: <a href='{$reportPublicUrl}' style='color: #0284c7;'>{$reportPublicUrl}</a>
+          </p>";
+    }
+
     $userBody = "
     <!DOCTYPE html>
     <html>
@@ -110,15 +162,36 @@ try {
         </div>
         <div style='padding: 24px;'>
           <p style='font-size: 15px; color: #334155;'>Hi <strong>{$userName}</strong>,</p>
-          <p style='font-size: 15px; color: #334155;'>Thank you for completing the 12-Point D2C Attribution Audit. Your diagnostic report has been generated successfully.</p>
-          
+          <p style='font-size: 15px; color: #334155;'>Thank you for completing the 12-Point D2C Attribution Audit. Your personalized diagnostic report is ready!</p>
+
+          {$reportLinkBlock}
+
           <div style='background: #f1f5f9; padding: 16px; border-radius: 8px; margin: 20px 0;'>
             <p style='margin: 0 0 8px 0; font-size: 13px; color: #64748b;'><strong>Company:</strong> {$userCompany}</p>
             <p style='margin: 0 0 8px 0; font-size: 13px; color: #64748b;'><strong>Audit ID:</strong> {$auditId}</p>
-            <p style='margin: 0; font-size: 13px; color: #64748b;'><strong>Submitted At:</strong> {$submittedAt}</p>
+            <p style='margin: 0; font-size: 13px; color: #64748b;'><strong>Generated On:</strong> {$dateSlug}</p>
           </div>
 
           <p style='margin-top: 24px; font-size: 14px; color: #64748b;'>Our team of attribution specialists is reviewing your findings and will be in touch if your setup requires priority calibration.</p>
+
+          <!-- CTA Buttons -->
+          <div style='text-align: center; margin: 28px 0;'>
+            <a href='https://cmgalaxy.com/book-a-demo'
+               style='display: inline-block; background: #0f172a; color: #ffffff;
+                      text-decoration: none; padding: 12px 24px; border-radius: 8px;
+                      font-size: 14px; font-weight: 600; margin: 6px 8px;
+                      box-shadow: 0 2px 8px rgba(15,23,42,0.20);'>
+              &#128197; Book a Demo
+            </a>
+            <a href='https://cmgalaxy.com/sign-up'
+               style='display: inline-block; background: #0284c7; color: #ffffff;
+                      text-decoration: none; padding: 12px 24px; border-radius: 8px;
+                      font-size: 14px; font-weight: 600; margin: 6px 8px;
+                      box-shadow: 0 2px 8px rgba(2,132,199,0.25);'>
+              &#128640; Sign Up Free
+            </a>
+          </div>
+
           <p style='margin-top: 16px; font-size: 14px; color: #334155;'>Best regards,<br><strong>CMGalaxy Support Team</strong></p>
         </div>
       </div>
@@ -221,6 +294,7 @@ try {
             'to' => ADMIN_EMAIL,
             'error' => $adminResult['error'] ?? null
         ],
+        'reportFile' => $reportSaveResult,
         'stagingApi' => $stagingResult
     ]);
     exit;
@@ -234,7 +308,186 @@ try {
 }
 
 // =========================================================================
-// 6. ROBUST SMTP SOCKET SENDER
+// 6. PDF REPORT GENERATOR (using zero-dependency SimplePDF class)
+// =========================================================================
+function generateReportPdf($userName, $userEmail, $userCompany, $auditId, $submittedAt, $answers): string {
+    $generatedDate = date('F j, Y');
+    $generatedTime = date('H:i');
+
+    // Count statuses
+    $reliableCount = $gapCount = $investigateCount = $unknownCount = 0;
+    $answerData = [];
+    foreach ($answers as $ans) {
+        $qNum    = (string)($ans['questionId'] ?? '');
+        $qTitle  = $ans['title'] ?? "Question #{$qNum}";
+        $qAnswer = strtoupper($ans['answer'] ?? '');
+        $qStatus = strtoupper($ans['status'] ?? '');
+        $impact  = $ans['budgetImpact'] ?? '';
+        switch ($qStatus) {
+            case 'RELIABLE':    $reliableCount++;    break;
+            case 'GAP':         $gapCount++;         break;
+            case 'INVESTIGATE': $investigateCount++; break;
+            default:            $unknownCount++;     break;
+        }
+        $answerData[] = compact('qNum', 'qTitle', 'qAnswer', 'qStatus', 'impact');
+    }
+
+    $total      = count($answers);
+    $score      = $total > 0 ? (int)round(($reliableCount / $total) * 100) : 0;
+    $grade      = $score >= 70 ? 'Strong Attribution' : ($score >= 40 ? 'Needs Attention' : 'Critical Gaps Found');
+
+    $pdf = new SimplePDF();
+    $M   = $pdf->getMargin();          // 40
+    $W   = $pdf->getPageWidth();       // 595.28
+    $CW  = $pdf->getContentWidth();    // 515.28
+    $y   = $pdf->getY();
+
+    // ---- HEADER BAND -------------------------------------------------------
+    $pdf->setFillColor(15, 23, 42);           // #0f172a dark navy
+    $pdf->rect($M, $y, $CW, 72, 'F');
+
+    // Brand label
+    $pdf->setTextColor(148, 163, 184);        // #94a3b8
+    $pdf->text($M + 10, $y + 14, 'CMGALAXY', 8, false);
+
+    // Title
+    $pdf->setTextColor(255, 255, 255);
+    $pdf->text($M + 10, $y + 27, 'D2C Attribution Audit Report', 14, true);
+
+    // Subtitle
+    $pdf->setTextColor(148, 163, 184);
+    $pdf->text($M + 10, $y + 42, 'Prepared for: ' . $userCompany, 9, false);
+
+    // Score
+    if ($score >= 70) { $pdf->setTextColor(16, 185, 129); }
+    elseif ($score >= 40) { $pdf->setTextColor(245, 158, 11); }
+    else { $pdf->setTextColor(239, 68, 68); }
+    $pdf->text($W - $M - 60, $y + 20, $score . '%', 22, true);
+    $pdf->setTextColor(148, 163, 184);
+    $pdf->text($W - $M - 60, $y + 46, $grade, 8, false);
+
+    // ---- META BAR ----------------------------------------------------------
+    $y += 72;
+    $pdf->setFillColor(248, 250, 252);        // #f8fafc
+    $pdf->rect($M, $y, $CW, 28, 'F');
+    $pdf->setDrawColor(226, 232, 240);
+    $pdf->line($M, $y, $M + $CW, $y);
+    $pdf->line($M, $y + 28, $M + $CW, $y + 28);
+    $pdf->setTextColor(100, 116, 139);        // #64748b
+    $pdf->text($M + 8,  $y + 10, 'Name: ' . $userName,    8, false);
+    $pdf->text($M + 8,  $y + 20, 'Email: ' . $userEmail,  8, false);
+    $pdf->text($M + 200, $y + 10, 'Audit ID: ' . $auditId,     8, false);
+    $pdf->text($M + 200, $y + 20, 'Date: ' . $generatedDate . ' ' . $generatedTime, 8, false);
+
+    // ---- SCORE TILES -------------------------------------------------------
+    $y += 40;
+    $tileW  = ($CW - 18) / 4;  // 4 tiles with 6pt gaps
+    $tileData = [
+        ['Reliable',    $reliableCount,    [16,185,129]],
+        ['Investigate', $investigateCount, [245,158,11]],
+        ['Gaps',        $gapCount,         [239,68,68]],
+        ['Unknown',     $unknownCount,     [148,163,184]],
+    ];
+    foreach ($tileData as $i => [$label, $count, $rgb]) {
+        $tx = $M + $i * ($tileW + 6);
+        // Tile bg
+        $pdf->setFillColor(248, 250, 252);
+        $pdf->rect($tx, $y, $tileW, 40, 'F');
+        $pdf->setDrawColor(226, 232, 240);
+        $pdf->rect($tx, $y, $tileW, 40, 'D');
+        // Count (big number)
+        $pdf->setTextColor(...$rgb);
+        $pdf->text($tx + 10, $y + 18, (string)$count, 20, true);
+        // Label
+        $pdf->setTextColor(100, 116, 139);
+        $pdf->text($tx + 10, $y + 32, $label . ' areas', 8, false);
+    }
+
+    // ---- TABLE HEADER -------------------------------------------------------
+    $y += 52;
+    $pdf->setFillColor(15, 23, 42);
+    $pdf->rect($M, $y, $CW, 18, 'F');
+    $pdf->setTextColor(255, 255, 255);
+    $col1 = $M + 6;   $cw1 = 220;
+    $col2 = $col1 + $cw1 + 4;   $cw2 = 60;
+    $col3 = $col2 + $cw2 + 4;   $cw3 = 70;
+    $col4 = $col3 + $cw3 + 4;
+    $pdf->text($col1, $y + 12, 'AREA',          8, true);
+    $pdf->text($col2, $y + 12, 'ANSWER',        8, true);
+    $pdf->text($col3, $y + 12, 'STATUS',        8, true);
+    $pdf->text($col4, $y + 12, 'BUDGET IMPACT', 8, true);
+
+    // ---- TABLE ROWS --------------------------------------------------------
+    $y += 18;
+    $rowH = 22;
+    foreach ($answerData as $idx => $row) {
+        // Check if we need a new page
+        if ($y + $rowH > $pdf->getPageHeight() - $M - 30) {
+            $pdf->addPage();
+            $y = $pdf->getMargin();
+        }
+
+        // Alternating row bg
+        if ($idx % 2 === 0) {
+            $pdf->setFillColor(248, 250, 252);
+            $pdf->rect($M, $y, $CW, $rowH, 'F');
+        } else {
+            $pdf->setFillColor(255, 255, 255);
+            $pdf->rect($M, $y, $CW, $rowH, 'F');
+        }
+
+        // Row border line
+        $pdf->setDrawColor(226, 232, 240);
+        $pdf->line($M, $y + $rowH, $M + $CW, $y + $rowH);
+
+        // Area cell (question number + title, truncated)
+        $pdf->setTextColor(15, 23, 42);
+        $rowTitle = '#{' . $row['qNum'] . '} ' . $row['qTitle'];
+        if (strlen($rowTitle) * 5 > $cw1) {
+            $rowTitle = mb_substr($rowTitle, 0, 38) . '...';
+        }
+        $pdf->text($col1, $y + 14, $rowTitle, 8, false);
+
+        // Answer cell
+        $pdf->setTextColor(51, 65, 85);
+        $pdf->text($col2, $y + 14, $row['qAnswer'], 8, true);
+
+        // Status cell with colored text
+        $statusColors = [
+            'RELIABLE'    => [16, 185, 129],
+            'GAP'         => [239, 68, 68],
+            'INVESTIGATE' => [245, 158, 11],
+        ];
+        [$sr, $sg, $sb] = $statusColors[$row['qStatus']] ?? [148, 163, 184];
+        $pdf->setTextColor($sr, $sg, $sb);
+        $pdf->text($col3, $y + 14, $row['qStatus'], 8, true);
+
+        // Impact cell
+        $pdf->setTextColor(100, 116, 139);
+        $impactText = $row['impact'];
+        if (strlen($impactText) > 28) $impactText = mb_substr($impactText, 0, 25) . '...';
+        $pdf->text($col4, $y + 14, $impactText, 7, false);
+
+        $y += $rowH;
+    }
+
+    // ---- FOOTER ------------------------------------------------------------
+    $y += 16;
+    if ($y > $pdf->getPageHeight() - $M - 20) {
+        $pdf->addPage();
+        $y = $pdf->getMargin();
+    }
+    $pdf->setDrawColor(226, 232, 240);
+    $pdf->line($M, $y, $M + $CW, $y);
+    $y += 8;
+    $pdf->setTextColor(148, 163, 184);
+    $pdf->text($M, $y, 'Generated by CMGalaxy - D2C Attribution Intelligence Platform  |  ' . $generatedDate . ' at ' . $generatedTime, 8, false);
+
+    return $pdf->output();
+}
+
+// =========================================================================
+// 7. ROBUST SMTP SOCKET SENDER
 // =========================================================================
 function sendSmtpMail($toEmail, $subject, $htmlBody) {
     $host = SMTP_HOST;
