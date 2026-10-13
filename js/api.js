@@ -173,6 +173,15 @@ export const apiService = {
         company: leadData.company.trim()
       },
       answers: structuredAnswers,
+      analysis: {
+        reliableCount: analysis.reliableCount,
+        investigateCount: analysis.investigateCount,
+        attributionGapCount: analysis.attributionGapCount,
+        unknownCount: analysis.unknownCount,
+        biggestFindingHeadline: (analysis.biggestFinding && analysis.biggestFinding.headline) || analysis.biggestFindingHeadline || '',
+        biggestFindingSubtext: (analysis.biggestFinding && analysis.biggestFinding.subtext) || analysis.biggestFindingSubtext || '',
+        sortedFindings: analysis.sortedFindings || []
+      },
       marketingSource: {
         utmSource: utm.utmSource,
         utmMedium: utm.utmMedium,

@@ -66,6 +66,33 @@ class SimplePDF
         );
     }
 
+    public function roundedRect(float $x, float $y, float $w, float $h, float $r = 4, string $style = 'FD'): void
+    {
+        $pdfY = $this->pageHeight - $y - $h;
+        [$fr, $fg, $fb] = $this->fillColor;
+        [$dr, $dg, $db] = $this->drawColor;
+        $op = match(strtoupper($style)) { 'D' => 'S', 'FD' => 'B', default => 'f' };
+        $k  = $r * 0.55228475;
+        $x0 = $x; $x1 = $x + $r; $x2 = $x + $w - $r; $x3 = $x + $w;
+        $y0 = $pdfY; $y1 = $pdfY + $r; $y2 = $pdfY + $h - $r; $y3 = $pdfY + $h;
+
+        $this->stream[] = sprintf(
+            "q %.4f %.4f %.4f rg %.4f %.4f %.4f RG 0.5 w " .
+            "%.2f %.2f m " .
+            "%.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c " .
+            "%.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c " .
+            "%.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c " .
+            "%.2f %.2f l %.2f %.2f %.2f %.2f %.2f %.2f c %s Q",
+            $fr, $fg, $fb, $dr, $dg, $db,
+            $x1, $y0,
+            $x2, $y0, $x2 + $k, $y0, $x3, $y0 + $r - $k, $x3, $y1,
+            $x3, $y2, $x3, $y2 + $k, $x2 + $k, $y3, $x2, $y3,
+            $x1, $y3, $x1 - $k, $y3, $x0, $y2 + $k, $x0, $y2,
+            $x0, $y1, $x0, $y1 - $k, $x1 - $k, $y0, $x1, $y0,
+            $op
+        );
+    }
+
     public function line(float $x1, float $y1, float $x2, float $y2): void
     {
         [$dr, $dg, $db] = $this->drawColor;
@@ -211,8 +238,30 @@ class SimplePDF
 
     private function escape(string $s): string
     {
-        // Convert UTF-8 → ISO-8859-1 (Latin-1) for standard PDF fonts
-        $s = mb_convert_encoding($s, 'ISO-8859-1', 'UTF-8');
+        $replacements = [
+            '✓' => 'OK',
+            '✔' => 'OK',
+            '◐' => '*',
+            '⚡' => '*',
+            '→' => '->',
+            '←' => '<-',
+            '–' => '-',
+            '—' => '-',
+            '’' => "'",
+            '‘' => "'",
+            '“' => '"',
+            '”' => '"',
+            '…' => '...',
+            '•' => '*',
+            '·' => '*',
+        ];
+        $s = str_replace(array_keys($replacements), array_values($replacements), $s);
+        $conv = @iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $s);
+        if ($conv !== false) {
+            $s = $conv;
+        } else {
+            $s = @mb_convert_encoding($s, 'ISO-8859-1', 'UTF-8');
+        }
         return str_replace(['\\', '(', ')', "\r", "\n"], ['\\\\', '\\(', '\\)', '', ' '], $s);
     }
 }

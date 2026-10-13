@@ -102,7 +102,8 @@ try {
     if (!is_dir($reportsDir)) {
         @mkdir($reportsDir, 0755, true);
     }
-    $pdfBytes = generateReportPdf($userName, $userEmail, $userCompany, $auditId, $submittedAt, $answers);
+    $analysisData = $data['analysis'] ?? null;
+    $pdfBytes = generateReportPdf($userName, $userEmail, $userCompany, $auditId, $submittedAt, $answers, $analysisData);
     $written  = file_put_contents($reportFilePath, $pdfBytes);
     if ($written !== false) {
         $reportSaveResult = ['saved' => true, 'path' => $reportFilePath, 'url' => $reportPublicUrl, 'filename' => $reportFileName, 'error' => null];
@@ -122,17 +123,17 @@ try {
     $reportLinkBlock = '';
     if ($reportPublicUrl) {
         $reportLinkBlock = "
-          <div style='text-align: center; margin: 28px 0;'>
+          <div style='text-align: center; margin: 28px 0 16px 0;'>
             <a href='{$reportPublicUrl}'
-               style='display: inline-block; background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+               style='display: inline-block; background: #0f172a;
                       color: #ffffff; text-decoration: none; padding: 14px 32px;
-                      border-radius: 8px; font-size: 15px; font-weight: 600;
+                      border-radius: 50px; font-size: 15px; font-weight: 600;
                       letter-spacing: 0.3px; box-shadow: 0 4px 14px rgba(15,23,42,0.25);'>
-              &#128202; Download Your Attribution Report (PDF) &rarr;
+              View My Attribution Report &rarr;
             </a>
           </div>
-          <p style='font-size: 12px; color: #94a3b8; text-align: center; margin-top: -12px;'>
-            Or copy this link: <a href='{$reportPublicUrl}' style='color: #0284c7;'>{$reportPublicUrl}</a>
+          <p style='font-size: 12px; color: #94a3b8; text-align: center; margin-top: 0; margin-bottom: 24px;'>
+            Or copy this link: <a href='{$reportPublicUrl}' style='color: #0284c7; text-decoration: underline;'>{$reportPublicUrl}</a>
           </p>";
     }
 
@@ -143,42 +144,39 @@ try {
     <body style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;'>
       <div style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;'>
         <div style='background: #0f172a; padding: 24px; color: #ffffff;'>
-          <h2 style='margin: 0; font-size: 20px;'>CMGalaxy D2C Attribution Audit</h2>
-          <p style='margin: 4px 0 0 0; color: #94a3b8; font-size: 14px;'>Audit Report for {$userCompany}</p>
+          <h2 style='margin: 0; font-size: 20px; font-weight: 700;'>CMGalaxy D2C Attribution Audit</h2>
+          <p style='margin: 4px 0 0 0; color: #94a3b8; font-size: 14px;'>Attribution Report for {$userCompany}</p>
         </div>
-        <div style='padding: 24px;'>
-          <p style='font-size: 15px; color: #334155;'>Hi <strong>{$userName}</strong>,</p>
-          <p style='font-size: 15px; color: #334155;'>Thank you for completing the 12-Point D2C Attribution Audit. Your personalized diagnostic report is ready!</p>
+        <div style='padding: 28px 24px;'>
+          <p style='font-size: 15px; color: #334155; margin-top: 0;'>Hi <strong>{$userName}</strong>,</p>
+          <p style='font-size: 15px; color: #334155; line-height: 1.6;'>Thank you for completing the attribution audit!</p>
+          <p style='font-size: 15px; color: #334155; line-height: 1.6;'>Your personalised attribution report for <strong>{$userCompany}</strong> is ready. Discover potential gaps in your attribution setup and opportunities to improve tracking and reporting.</p>
 
           {$reportLinkBlock}
 
-          <div style='background: #f1f5f9; padding: 16px; border-radius: 8px; margin: 20px 0;'>
-            <p style='margin: 0 0 8px 0; font-size: 13px; color: #64748b;'><strong>Company:</strong> {$userCompany}</p>
-            <p style='margin: 0 0 8px 0; font-size: 13px; color: #64748b;'><strong>Audit ID:</strong> {$auditId}</p>
-            <p style='margin: 0; font-size: 13px; color: #64748b;'><strong>Generated On:</strong> {$dateSlug}</p>
+          <div style='text-align: center; margin: 32px 0 20px 0; border-top: 1px solid #f1f5f9; padding-top: 24px;'>
+            <p style='font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 16px 0;'>Ready to take the next step?</p>
+            <div>
+              <a href='https://cal.com/cmgalaxy/demo'
+                 style='display: inline-block; background: #34C759; color: #ffffff;
+                        text-decoration: none; padding: 13px 28px; border-radius: 50px;
+                        font-size: 14px; font-weight: 600; margin: 6px 6px;
+                        box-shadow: 0 3px 10px rgba(52,199,89,0.30);'>
+                Book an Appointment &rarr;
+              </a>
+              <a href='https://platform.cmgalaxy.com/sign-up'
+                 style='display: inline-block; background: #ffffff; color: #0f172a;
+                        border: 1.5px solid #0f172a; text-decoration: none;
+                        padding: 12px 28px; border-radius: 50px;
+                        font-size: 14px; font-weight: 600; margin: 6px 6px;'>
+                Sign Up Now &rarr;
+              </a>
+            </div>
           </div>
 
-          <p style='margin-top: 24px; font-size: 14px; color: #64748b;'>Our team of attribution specialists is reviewing your findings and will be in touch if your setup requires priority calibration.</p>
+          <p style='margin-top: 24px; font-size: 14px; color: #64748b; line-height: 1.6;'>Need help understanding your results? Simply reply to this email &mdash; we're happy to help.</p>
 
-          <!-- CTA Buttons -->
-          <div style='text-align: center; margin: 28px 0;'>
-            <a href='https://cal.com/cmgalaxy/demo'
-               style='display: inline-block; background: #0f172a; color: #ffffff;
-                      text-decoration: none; padding: 12px 24px; border-radius: 8px;
-                      font-size: 14px; font-weight: 600; margin: 6px 8px;
-                      box-shadow: 0 2px 8px rgba(15,23,42,0.20);'>
-              &#128197; Book a Demo
-            </a>
-            <a href='https://platform.cmgalaxy.com/sign-up'
-               style='display: inline-block; background: #0284c7; color: #ffffff;
-                      text-decoration: none; padding: 12px 24px; border-radius: 8px;
-                      font-size: 14px; font-weight: 600; margin: 6px 8px;
-                      box-shadow: 0 2px 8px rgba(2,132,199,0.25);'>
-              &#128640; Sign Up Free
-            </a>
-          </div>
-
-          <p style='margin-top: 16px; font-size: 14px; color: #334155;'>Best regards,<br><strong>CMGalaxy Support Team</strong></p>
+          <p style='margin-top: 20px; font-size: 14px; color: #334155;'>Best regards,<br><strong>CMGALAXY Team</strong></p>
         </div>
       </div>
     </body>
@@ -188,6 +186,20 @@ try {
     // 4. ADMIN EMAIL CONTENT
     // =========================================================================
     $adminSubject = "New D2C Attribution Audit Lead: " . $userName . " (" . $userCompany . ")";
+
+    $submissionDate = date('F j, Y - H:i') . ' IST';
+    $adminReportBtn = '';
+    if ($reportPublicUrl) {
+        $adminReportBtn = "
+          <div style='margin: 20px 0;'>
+            <a href='{$reportPublicUrl}'
+               style='display: inline-block; background: #0284c7; color: #ffffff;
+                      text-decoration: none; padding: 12px 24px; border-radius: 6px;
+                      font-size: 14px; font-weight: 600;'>
+              View Lead &amp; Audit Report &rarr;
+            </a>
+          </div>";
+    }
 
     $adminBody = "
     <!DOCTYPE html>
@@ -199,14 +211,22 @@ try {
           <h2 style='margin: 0; font-size: 18px;'>⚡ New D2C Attribution Audit Lead Captured</h2>
         </div>
         <div style='padding: 24px;'>
-          <h3 style='margin-top: 0; font-size: 16px; color: #0f172a;'>Lead Details:</h3>
-          <ul style='color: #334155; font-size: 14px; line-height: 1.6;'>
-            <li><strong>Full Name:</strong> {$userName}</li>
-            <li><strong>Email:</strong> <a href='mailto:{$userEmail}'>{$userEmail}</a></li>
+          <p style='font-size: 15px; color: #334155; margin-top: 0;'>Hi Team,</p>
+          <p style='font-size: 15px; color: #334155; line-height: 1.6;'>A new lead has completed all 12 questions of the Personalised Attribution Audit.</p>
+
+          <h3 style='margin-top: 20px; margin-bottom: 8px; font-size: 15px; color: #0f172a;'>Lead Details</h3>
+          <ul style='color: #334155; font-size: 14px; line-height: 1.8; list-style: none; padding-left: 0; margin-top: 4px;'>
+            <li><strong>Name:</strong> {$userName}</li>
+            <li><strong>Email:</strong> <a href='mailto:{$userEmail}' style='color: #0284c7;'>{$userEmail}</a></li>
             <li><strong>Company:</strong> {$userCompany}</li>
-            <li><strong>Audit ID:</strong> {$auditId}</li>
-            <li><strong>Submitted At:</strong> {$submittedAt}</li>
+            <li><strong>Date:</strong> {$submissionDate}</li>
           </ul>
+
+          {$adminReportBtn}
+
+          <p style='font-size: 14px; color: #64748b; margin-top: 24px; line-height: 1.6;'>Please review the findings, update the CRM, and follow up as appropriate.</p>
+
+          <p style='font-size: 14px; color: #334155; margin-top: 16px;'>Regards,<br><strong>Attribution Audit System</strong></p>
         </div>
       </div>
     </body>
@@ -280,180 +300,507 @@ try {
 }
 
 // =========================================================================
-// 6. PDF REPORT GENERATOR (using zero-dependency SimplePDF class)
+// 6. MULTI-PAGE VISUAL PDF REPORT GENERATOR (matches on-screen diagnostic report)
 // =========================================================================
-function generateReportPdf($userName, $userEmail, $userCompany, $auditId, $submittedAt, $answers): string {
+function generateReportPdf($userName, $userEmail, $userCompany, $auditId, $submittedAt, $answers, $analysis = null): string {
     $generatedDate = date('F j, Y');
     $generatedTime = date('H:i');
 
-    // Count statuses
-    $reliableCount = $gapCount = $investigateCount = $unknownCount = 0;
-    $answerData = [];
+    // Default static question definitions
+    $questionsCatalog = [
+        1 => [
+            'id' => 1,
+            'category' => '01 — REVENUE & CONVERSION',
+            'title' => 'Revenue match',
+            'question' => 'Does total revenue claimed by Meta + Google make sense against actual Shopify revenue after allowing for attribution overlap?',
+            'whyItMatters' => 'When ad channels collectively claim 120-150%+ of your gross Shopify revenue, your blended return metrics become inflated illusions. You risk allocating more capital to channels that are simply claiming credit for organic demand or each other\'s assists.',
+            'whatToInvestigate' => 'Sum 30-day reported revenue across Meta Ads Manager and Google Ads. Compare this against Shopify Gross Sales (less returns). Calculate your Net Attribution Inflation ratio and establish an incremental baseline.',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'Can the team reproduce the same answer consistently?'
+        ],
+        2 => [
+            'id' => 2,
+            'category' => '01 — REVENUE & CONVERSION',
+            'title' => 'Conversion match',
+            'question' => 'Do Meta, Google, GA4 and Shopify broadly agree on the number and value of purchases?',
+            'whyItMatters' => 'Discrepancies exceeding 15% between ad platform conversions, GA4 purchase events, and Shopify orders signal fundamental signal loss, ad blockers, or duplicate pixel firing. Inaccurate conversion counts mislead bidding algorithms.',
+            'whatToInvestigate' => 'Cross-reference transaction IDs between Shopify order exports and GA4 purchase events. Audit Meta event deduplication scores and Google Ads enhanced conversion match rates over identical date windows.',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'What data or integration is missing?'
+        ],
+        3 => [
+            'id' => 3,
+            'category' => '02 — ATTRIBUTION SETUP',
+            'title' => 'Attribution windows',
+            'question' => 'Do you know which attribution windows Meta and Google are using when they report conversions?',
+            'whyItMatters' => 'Comparing a 7-day click / 1-day view attribution window in Meta directly against a Google Ads data-driven or 30-day click model creates an unfair apples-to-oranges comparison, distorting cross-channel budget allocation.',
+            'whatToInvestigate' => 'Document the exact reporting settings in Meta Ads Manager (e.g. 7d click + 1d view vs 1d click only) and Google Ads (account-level vs campaign attribution models). Align both to a standardized view for budget comparisons.',
+            'defaultImpact' => 'MEDIUM',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        4 => [
+            'id' => 4,
+            'category' => '02 — ATTRIBUTION SETUP',
+            'title' => 'Double attribution',
+            'question' => 'Could Meta and Google both be claiming credit for the same Shopify order?',
+            'whyItMatters' => 'If Meta and Google both receive credit for the same Shopify order, platform-reported performance may not provide a reliable basis for reallocating budget. Both algorithms will believe they drove the sale independently.',
+            'whatToInvestigate' => 'Compare platform-reported conversions against Shopify orders and review the attribution rules being used. Implement order ID transaction deduplication in your central analytics layer.',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        5 => [
+            'id' => 5,
+            'category' => '03 — TRACKING QUALITY',
+            'title' => 'UTM hygiene',
+            'question' => 'Are UTMs used consistently enough to trace paid traffic and revenue back to campaigns?',
+            'whyItMatters' => 'Inconsistent UTM naming conventions (casing, campaign IDs, ad IDs, dynamic parameters) prevent your analytics engine from matching sessions to ad spend, creating "Direct" or "(Unassigned)" traffic black holes in GA4.',
+            'whatToInvestigate' => 'Audit URL parameters across all active ad sets and ads in Meta and Google. Check for lowercase normalization, parameter casing, and automated parameter tracking templates.',
+            'defaultImpact' => 'MEDIUM',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        6 => [
+            'id' => 6,
+            'category' => '03 — TRACKING QUALITY',
+            'title' => 'Meta tracking',
+            'question' => 'Are Meta Pixel and Conversions API configured correctly, without obvious missing or duplicate purchase events?',
+            'whyItMatters' => 'Improper deduplication between browser Pixel and server-side Conversions API (CAPI) can either double-count purchases or drop valid signal, causing Meta Advantage+ campaigns to optimize on flawed feedback loops.',
+            'whatToInvestigate' => 'Check Meta Events Manager for Event Match Quality (EMQ) scores and deduplication rates on Purchase events. Ensure identical event_id and order_id parameters are passed from both client and server.',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        7 => [
+            'id' => 7,
+            'category' => '03 — TRACKING QUALITY',
+            'title' => 'Google tracking',
+            'question' => 'Are Google Ads conversions set up without double-counting GA4 imports and direct tags?',
+            'whyItMatters' => 'Having both GA4 imported purchases and direct Google Ads conversion tags active as "Primary" conversion actions causes Smart Bidding to double-count transactions and aggressively over-bid on brand search and PMax.',
+            'whatToInvestigate' => 'Inspect Google Ads > Goals > Conversions. Verify that only one transaction source is marked as "Primary" for bidding, with Enhanced Conversions enabled and passing hashed user data.',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        8 => [
+            'id' => 8,
+            'category' => '04 — COMMERCE RECONCILIATION',
+            'title' => 'Shopify reconciliation',
+            'question' => 'Are paid orders verified against realized Shopify revenue after cancellations, returns, and failed payments?',
+            'whyItMatters' => 'Ad platforms report gross orders without visibility into cancellations, fraud, refunds, or chargebacks. Optimizing marketing spend on phantom revenue leads to negative unit economics and cash flow strain.',
+            'whatToInvestigate' => 'Build an automated reconciliation pipeline between Shopify webhook order status (specifically cancelled/refunded flags) and your ad reporting dashboard to observe net realized revenue.',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        9 => [
+            'id' => 9,
+            'category' => '04 — COMMERCE RECONCILIATION',
+            'title' => 'New vs returning customers',
+            'question' => 'Can you separate new vs returning customer revenue by acquisition channel?',
+            'whyItMatters' => 'If retargeting ads or branded search campaigns claim credit for repurchases by loyal subscribers, your true Blended Customer Acquisition Cost (nCAC) is artificially deflated while top-of-funnel reach stalls.',
+            'whatToInvestigate' => 'Segment Shopify orders by first-time customer vs repeat customer tags. Calculate new-customer ROAS (ncROAS) and new-customer CAC (nCAC) independently for Meta and Google spend.',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        10 => [
+            'id' => 10,
+            'category' => '05 — PERFORMANCE MEASUREMENT',
+            'title' => 'CAC / ROAS consistency',
+            'question' => 'Is there an agreed definition of CAC and ROAS across marketing, finance, and agencies?',
+            'whyItMatters' => 'If the growth team defines ROAS using in-platform Meta attribution while finance defines it as Shopify Net Revenue divided by Total Ad Spend (MER), executive misalignment will freeze budget scaling discussions.',
+            'whatToInvestigate' => 'Document a single shared "Marketing Metrics Dictionary" across growth, agency partners, and finance defining exact numerator and denominator inclusions (taxes, discounts, shipping, agency fees).',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        11 => [
+            'id' => 11,
+            'category' => '05 — PERFORMANCE MEASUREMENT',
+            'title' => 'Cross-channel journey',
+            'question' => 'Do you know how Meta and Google work together across the buyer journey before conversion?',
+            'whyItMatters' => 'Last-click or siloed platform models starve top-of-funnel awareness channels (like TikTok or non-brand Meta) while over-rewarding bottom-funnel capturing channels (like Google Branded Search and Klaviyo flows).',
+            'whatToInvestigate' => 'Map multi-touch conversion paths to evaluate channel synergy. Identify touchpoint sequences where Meta acts as the initial discoverer and Google acts as the final navigation converter.',
+            'defaultImpact' => 'HIGH',
+            'keyQuestion' => 'Is the difference documented and acceptable for decision-making?'
+        ],
+        12 => [
+            'id' => 12,
+            'category' => '06 — DECISION CONFIDENCE',
+            'title' => 'Budget decision confidence',
+            'question' => 'Does leadership trust the numbers enough to move $10,000-$50,000 between channels with confidence?',
+            'whyItMatters' => 'This is the ultimate litmus test of attribution health. If your data cannot give leadership confidence to shift $10,000-$50,000 between channels, your reporting is merely a vanity dashboard rather than an operational steering wheel.',
+            'whatToInvestigate' => 'Evaluate the uncertainty spread across your measurement stack. Design clean geo-lift or matched-market holdout tests to measure true marginal incrementality before making large portfolio reallocations.',
+            'defaultImpact' => 'CRITICAL',
+            'keyQuestion' => 'Can the team reproduce the same answer consistently?'
+        ],
+    ];
+
+    // Build or extract findings
+    $findings = [];
+    $rawAnswersMap = [];
     foreach ($answers as $ans) {
-        $qNum    = (string)($ans['questionId'] ?? '');
-        $qTitle  = $ans['title'] ?? "Question #{$qNum}";
-        $qAnswer = strtoupper($ans['answer'] ?? '');
-        $qStatus = strtoupper($ans['status'] ?? '');
-        $impact  = $ans['budgetImpact'] ?? '';
-        switch ($qStatus) {
-            case 'RELIABLE':    $reliableCount++;    break;
-            case 'GAP':         $gapCount++;         break;
-            case 'INVESTIGATE': $investigateCount++; break;
-            default:            $unknownCount++;     break;
+        $qId = (int)($ans['questionId'] ?? 0);
+        if ($qId > 0) {
+            $rawAnswersMap[$qId] = $ans;
         }
-        $answerData[] = compact('qNum', 'qTitle', 'qAnswer', 'qStatus', 'impact');
     }
 
-    $total      = count($answers);
-    $score      = $total > 0 ? (int)round(($reliableCount / $total) * 100) : 0;
-    $grade      = $score >= 70 ? 'Strong Attribution' : ($score >= 40 ? 'Needs Attention' : 'Critical Gaps Found');
+    $reliableCount = 0;
+    $investigateCount = 0;
+    $gapCount = 0;
+    $unknownCount = 0;
 
+    for ($i = 1; $i <= 12; $i++) {
+        $qInfo = $questionsCatalog[$i];
+        $ansRow = $rawAnswersMap[$i] ?? [];
+        $rawAnswer = strtolower(trim($ansRow['answer'] ?? 'dont_know'));
+        $rawStatus = strtoupper(trim($ansRow['status'] ?? ''));
+
+        // Normalize status
+        if ($rawStatus === 'RELIABLE' || ($rawStatus === '' && $rawAnswer === 'yes')) {
+            $status = 'RELIABLE';
+            $statusLabel = 'RELIABLE';
+            $reliableCount++;
+        } elseif (strpos($rawStatus, 'GAP') !== false || ($rawStatus === '' && $rawAnswer === 'no')) {
+            $status = 'GAP';
+            $statusLabel = 'ATTRIBUTION GAP';
+            $gapCount++;
+        } elseif ($rawStatus === 'INVESTIGATE' || ($rawStatus === '' && $rawAnswer === 'partly')) {
+            $status = 'INVESTIGATE';
+            $statusLabel = 'INVESTIGATE';
+            $investigateCount++;
+        } else {
+            $status = 'UNKNOWN';
+            $statusLabel = 'UNKNOWN';
+            $unknownCount++;
+        }
+
+        // Answer label
+        if ($rawAnswer === 'yes') {
+            $answerLabel = 'YES';
+        } elseif ($rawAnswer === 'partly') {
+            $answerLabel = 'PARTLY';
+        } elseif ($rawAnswer === 'no') {
+            $answerLabel = 'NO';
+        } else {
+            $answerLabel = "DON'T KNOW";
+        }
+
+        $impact = strtoupper(trim($ansRow['budgetImpact'] ?? $qInfo['defaultImpact']));
+
+        // Weight for sorting priority (critical gaps first)
+        $impactWeight = match($impact) { 'CRITICAL' => 30, 'HIGH' => 20, default => 10 };
+        $statusWeight = match($status) { 'GAP' => 35, 'INVESTIGATE' => 25, 'UNKNOWN' => 15, default => 5 };
+        $sortScore = $impactWeight + $statusWeight + (15 - $i);
+
+        $findings[] = [
+            'id' => $i,
+            'category' => $qInfo['category'],
+            'title' => $qInfo['title'],
+            'question' => $qInfo['question'],
+            'whyItMatters' => $qInfo['whyItMatters'],
+            'whatToInvestigate' => $qInfo['whatToInvestigate'],
+            'keyQuestion' => $qInfo['keyQuestion'],
+            'impact' => $impact,
+            'status' => $status,
+            'statusLabel' => $statusLabel,
+            'answerLabel' => $answerLabel,
+            'sortScore' => $sortScore
+        ];
+    }
+
+    // Override counts if provided in analysis object
+    if (is_array($analysis)) {
+        if (isset($analysis['reliableCount'])) $reliableCount = (int)$analysis['reliableCount'];
+        if (isset($analysis['investigateCount'])) $investigateCount = (int)$analysis['investigateCount'];
+        if (isset($analysis['attributionGapCount'])) $gapCount = (int)$analysis['attributionGapCount'];
+        if (isset($analysis['unknownCount'])) $unknownCount = (int)$analysis['unknownCount'];
+    }
+
+    // Sort findings by priority (highest risk on top)
+    usort($findings, fn($a, $b) => $b['sortScore'] <=> $a['sortScore']);
+
+    // Strategic finding headline & subtext
+    if (!empty($analysis['biggestFindingHeadline'])) {
+        $headline = $analysis['biggestFindingHeadline'];
+        $subtext  = $analysis['biggestFindingSubtext'] ?? '';
+    } elseif ($gapCount >= 2) {
+        $headline = "{$gapCount} major attribution gaps are distorting your marketing budget decisions.";
+        $subtext  = "Your audit indicates significant reporting divergence between Meta, Google, and Shopify. Reallocating budget right now carries substantial blind-spot risk until cross-channel deduplication and Shopify reconciliation are established.";
+    } elseif ($gapCount === 1) {
+        $headline = "1 critical area may affect how confidently your team allocates marketing budget.";
+        $subtext  = "Your audit indicates that several parts of your attribution setup need investigation before using platform dashboards to justify significant cross-channel budget shifts.";
+    } elseif ($investigateCount >= 3) {
+        $headline = "{$investigateCount} reporting areas show variance that requires diagnostic clarity.";
+        $subtext  = "While there are no catastrophic tracking breakages, numbers between ad managers and Shopify diverge enough to create friction between marketing and finance during scale planning.";
+    } elseif ($unknownCount >= 2) {
+        $headline = "{$unknownCount} unverified attribution variables prevent confident performance measurement.";
+        $subtext  = "Your team lacks visibility into key tracking mechanics (such as lookback windows or deduplication). An attribution audit should be conducted to establish baseline truth.";
+    } else {
+        $headline = "Your attribution foundation shows strong alignment across channels.";
+        $subtext  = "Platform reporting and Shopify data broadly reconcile. Your next priority is testing incremental lift and continuous reconciliation to safeguard scale.";
+    }
+
+    // Initialize PDF
     $pdf = new SimplePDF();
     $M   = $pdf->getMargin();          // 40
     $W   = $pdf->getPageWidth();       // 595.28
+    $H   = $pdf->getPageHeight();      // 841.89
     $CW  = $pdf->getContentWidth();    // 515.28
-    $y   = $pdf->getY();
+    $totalPages = 8;
 
-    // ---- HEADER BAND -------------------------------------------------------
-    $pdf->setFillColor(15, 23, 42);           // #0f172a dark navy
-    $pdf->rect($M, $y, $CW, 72, 'F');
+    // Helper footer function
+    $drawPageFooter = function($pageNum) use ($pdf, $M, $CW, $totalPages, $generatedDate, $generatedTime) {
+        $pdf->setDrawColor(226, 232, 240);
+        $pdf->line($M, 805, $M + $CW, 805);
+        $pdf->setTextColor(148, 163, 184);
+        $pdf->text($M, 818, 'CMGalaxy - D2C Attribution Intelligence Platform  |  ' . $generatedDate . ' ' . $generatedTime, 7.5, false);
+        $pdf->text($M + $CW - 35, 818, $pageNum . ' / ' . $totalPages, 7.5, false);
+    };
 
-    // Brand label
-    $pdf->setTextColor(148, 163, 184);        // #94a3b8
-    $pdf->text($M + 10, $y + 14, 'CMGALAXY', 8, false);
+    // =========================================================================
+    // PAGE 1: OVERVIEW & STRATEGIC FINDINGS
+    // =========================================================================
+    // Top Eyebrow
+    $pdf->setTextColor(79, 70, 229); // Indigo
+    $pdf->text($M, 52, 'YOUR D2C ATTRIBUTION AUDIT', 8, true);
 
     // Title
-    $pdf->setTextColor(255, 255, 255);
-    $pdf->text($M + 10, $y + 27, 'D2C Attribution Audit Report', 14, true);
+    $pdf->setTextColor(15, 23, 42); // Dark navy
+    $pdf->text($M, 75, "Here's where your reporting stands.", 19, true);
 
     // Subtitle
-    $pdf->setTextColor(148, 163, 184);
-    $pdf->text($M + 10, $y + 42, 'Prepared for: ' . $userCompany, 9, false);
+    $pdf->setTextColor(100, 116, 139); // Slate grey
+    $pdf->text($M, 93, 'Prepared for: ' . $userName . ' - ' . $userCompany . '  |  Audit ID: ' . $auditId, 9, false);
 
-    // Score
-    if ($score >= 70) { $pdf->setTextColor(16, 185, 129); }
-    elseif ($score >= 40) { $pdf->setTextColor(245, 158, 11); }
-    else { $pdf->setTextColor(239, 68, 68); }
-    $pdf->text($W - $M - 60, $y + 20, $score . '%', 22, true);
-    $pdf->setTextColor(148, 163, 184);
-    $pdf->text($W - $M - 60, $y + 46, $grade, 8, false);
+    // 4 Outcome Summary Cards (2x2 Grid)
+    $gridW = ($CW - 14) / 2; // ~250.6
+    $gridH = 64;
 
-    // ---- META BAR ----------------------------------------------------------
-    $y += 72;
-    $pdf->setFillColor(248, 250, 252);        // #f8fafc
-    $pdf->rect($M, $y, $CW, 28, 'F');
+    // Row 1
+    // Card 1: Reliable
+    $pdf->setFillColor(255, 255, 255);
     $pdf->setDrawColor(226, 232, 240);
-    $pdf->line($M, $y, $M + $CW, $y);
-    $pdf->line($M, $y + 28, $M + $CW, $y + 28);
-    $pdf->setTextColor(100, 116, 139);        // #64748b
-    $pdf->text($M + 8,  $y + 10, 'Name: ' . $userName,    8, false);
-    $pdf->text($M + 8,  $y + 20, 'Email: ' . $userEmail,  8, false);
-    $pdf->text($M + 200, $y + 10, 'Audit ID: ' . $auditId,     8, false);
-    $pdf->text($M + 200, $y + 20, 'Date: ' . $generatedDate . ' ' . $generatedTime, 8, false);
+    $pdf->roundedRect($M, 115, $gridW, $gridH, 6, 'FD');
+    $pdf->setTextColor(16, 185, 129); // Green
+    $pdf->text($M + 12, 131, '✓ RELIABLE', 8, true);
+    $pdf->text($M + 12, 153, $reliableCount . ' areas', 16, true);
+    $pdf->setTextColor(100, 116, 139);
+    $pdf->text($M + 12, 168, 'Tracking & reporting reconcile', 8, false);
 
-    // ---- SCORE TILES -------------------------------------------------------
-    $y += 40;
-    $tileW  = ($CW - 18) / 4;  // 4 tiles with 6pt gaps
-    $tileData = [
-        ['Reliable',    $reliableCount,    [16,185,129]],
-        ['Investigate', $investigateCount, [245,158,11]],
-        ['Gaps',        $gapCount,         [239,68,68]],
-        ['Unknown',     $unknownCount,     [148,163,184]],
-    ];
-    foreach ($tileData as $i => [$label, $count, $rgb]) {
-        $tx = $M + $i * ($tileW + 6);
-        // Tile bg
-        $pdf->setFillColor(248, 250, 252);
-        $pdf->rect($tx, $y, $tileW, 40, 'F');
-        $pdf->setDrawColor(226, 232, 240);
-        $pdf->rect($tx, $y, $tileW, 40, 'D');
-        // Count (big number)
-        $pdf->setTextColor(...$rgb);
-        $pdf->text($tx + 10, $y + 18, (string)$count, 20, true);
-        // Label
-        $pdf->setTextColor(100, 116, 139);
-        $pdf->text($tx + 10, $y + 32, $label . ' areas', 8, false);
-    }
+    // Card 2: Investigate
+    $pdf->setFillColor(255, 255, 255);
+    $pdf->roundedRect($M + $gridW + 14, 115, $gridW, $gridH, 6, 'FD');
+    $pdf->setTextColor(245, 158, 11); // Amber
+    $pdf->text($M + $gridW + 26, 131, '◐ INVESTIGATE', 8, true);
+    $pdf->text($M + $gridW + 26, 153, $investigateCount . ' areas', 16, true);
+    $pdf->setTextColor(100, 116, 139);
+    $pdf->text($M + $gridW + 26, 168, 'Numbers differ; reason understood', 8, false);
 
-    // ---- TABLE HEADER -------------------------------------------------------
-    $y += 52;
-    $pdf->setFillColor(15, 23, 42);
-    $pdf->rect($M, $y, $CW, 18, 'F');
-    $pdf->setTextColor(255, 255, 255);
-    $col1 = $M + 6;   $cw1 = 220;
-    $col2 = $col1 + $cw1 + 4;   $cw2 = 60;
-    $col3 = $col2 + $cw2 + 4;   $cw3 = 70;
-    $col4 = $col3 + $cw3 + 4;
-    $pdf->text($col1, $y + 12, 'AREA',          8, true);
-    $pdf->text($col2, $y + 12, 'ANSWER',        8, true);
-    $pdf->text($col3, $y + 12, 'STATUS',        8, true);
-    $pdf->text($col4, $y + 12, 'BUDGET IMPACT', 8, true);
+    // Row 2
+    // Card 3: Attribution Gaps
+    $pdf->setFillColor(255, 255, 255);
+    $pdf->roundedRect($M, 190, $gridW, $gridH, 6, 'FD');
+    $pdf->setTextColor(239, 68, 68); // Red
+    $pdf->text($M + 12, 206, '! ATTRIBUTION GAPS', 8, true);
+    $pdf->text($M + 12, 228, $gapCount . ' areas', 16, true);
+    $pdf->setTextColor(100, 116, 139);
+    $pdf->text($M + 12, 243, 'Materially affects budget decisions', 8, false);
 
-    // ---- TABLE ROWS --------------------------------------------------------
-    $y += 18;
-    $rowH = 22;
-    foreach ($answerData as $idx => $row) {
-        // Check if we need a new page
-        if ($y + $rowH > $pdf->getPageHeight() - $M - 30) {
-            $pdf->addPage();
-            $y = $pdf->getMargin();
-        }
+    // Card 4: Unknown
+    $pdf->setFillColor(255, 255, 255);
+    $pdf->roundedRect($M + $gridW + 14, 190, $gridW, $gridH, 6, 'FD');
+    $pdf->setTextColor(100, 116, 139); // Slate
+    $pdf->text($M + $gridW + 26, 206, '? UNKNOWN', 8, true);
+    $pdf->setTextColor(51, 65, 85);
+    $pdf->text($M + $gridW + 26, 228, $unknownCount . ' areas', 16, true);
+    $pdf->setTextColor(100, 116, 139);
+    $pdf->text($M + $gridW + 26, 243, 'Team cannot answer with confidence', 8, false);
 
-        // Alternating row bg
-        if ($idx % 2 === 0) {
-            $pdf->setFillColor(248, 250, 252);
-            $pdf->rect($M, $y, $CW, $rowH, 'F');
-        } else {
-            $pdf->setFillColor(255, 255, 255);
-            $pdf->rect($M, $y, $CW, $rowH, 'F');
-        }
+    // Strategic Finding Card
+    $pdf->setFillColor(248, 250, 252);
+    $pdf->setDrawColor(226, 232, 240);
+    $pdf->roundedRect($M, 270, $CW, 105, 6, 'FD');
 
-        // Row border line
-        $pdf->setDrawColor(226, 232, 240);
-        $pdf->line($M, $y + $rowH, $M + $CW, $y + $rowH);
+    $pdf->setTextColor(217, 119, 6);
+    $pdf->text($M + 14, 288, '⚡ STRATEGIC ATTRIBUTION FINDING', 8, true);
 
-        // Area cell (question number + title, truncated)
-        $pdf->setTextColor(15, 23, 42);
-        $rowTitle = '#{' . $row['qNum'] . '} ' . $row['qTitle'];
-        if (strlen($rowTitle) * 5 > $cw1) {
-            $rowTitle = mb_substr($rowTitle, 0, 38) . '...';
-        }
-        $pdf->text($col1, $y + 14, $rowTitle, 8, false);
+    $pdf->setTextColor(15, 23, 42);
+    $pdf->text($M + 14, 308, $headline, 12, true);
 
-        // Answer cell
-        $pdf->setTextColor(51, 65, 85);
-        $pdf->text($col2, $y + 14, $row['qAnswer'], 8, true);
+    $pdf->setTextColor(71, 85, 105);
+    $pdf->multiText($M + 14, 326, $CW - 28, $subtext, 8.5, false, 12.5);
 
-        // Status cell with colored text
-        $statusColors = [
-            'RELIABLE'    => [16, 185, 129],
-            'GAP'         => [239, 68, 68],
-            'INVESTIGATE' => [245, 158, 11],
-        ];
-        [$sr, $sg, $sb] = $statusColors[$row['qStatus']] ?? [148, 163, 184];
-        $pdf->setTextColor($sr, $sg, $sb);
-        $pdf->text($col3, $y + 14, $row['qStatus'], 8, true);
+    // Section Header: Priority areas to investigate
+    $pdf->setTextColor(15, 23, 42);
+    $pdf->text($M, 410, 'Priority areas to investigate', 17, true);
+    $pdf->setTextColor(100, 116, 139);
+    $pdf->text($M, 428, 'Ranked by budget decision risk and attribution status', 9.5, false);
 
-        // Impact cell
-        $pdf->setTextColor(100, 116, 139);
-        $impactText = $row['impact'];
-        if (strlen($impactText) > 28) $impactText = mb_substr($impactText, 0, 25) . '...';
-        $pdf->text($col4, $y + 14, $impactText, 7, false);
+    // Intro explanation box on page 1
+    $pdf->setFillColor(255, 255, 255);
+    $pdf->setDrawColor(226, 232, 240);
+    $pdf->roundedRect($M, 448, $CW, 95, 6, 'FD');
+    $pdf->setTextColor(15, 23, 42);
+    $pdf->text($M + 14, 468, 'Diagnostic Framework Overview', 10, true);
+    $pdf->setTextColor(71, 85, 105);
+    $pdf->multiText($M + 14, 484, $CW - 28, 'The following pages break down each of the 12 attribution areas evaluated in your audit. For each finding, we highlight Why It Matters from a unit economics perspective, What To Investigate within your ad platforms and Shopify data, and the core diagnostic prompt your team can use during weekly growth reviews.', 8.5, false, 12);
 
-        $y += $rowH;
-    }
+    $drawPageFooter(1);
 
-    // ---- FOOTER ------------------------------------------------------------
-    $y += 16;
-    if ($y > $pdf->getPageHeight() - $M - 20) {
+    // =========================================================================
+    // PAGES 2 - 7: FINDING CARDS (2 per page = 12 findings across 6 pages)
+    // =========================================================================
+    $cardH = 360;
+    $yPositions = [42, 416]; // Top card and bottom card
+
+    $findingChunks = array_chunk($findings, 2);
+    foreach ($findingChunks as $pageIdx => $chunk) {
         $pdf->addPage();
-        $y = $pdf->getMargin();
+        $currPage = 2 + $pageIdx;
+
+        foreach ($chunk as $cardIdx => $f) {
+            $cardY = $yPositions[$cardIdx];
+
+            // Outer Card Frame
+            $pdf->setFillColor(255, 255, 255);
+            $pdf->setDrawColor(226, 232, 240);
+            $pdf->roundedRect($M, $cardY, $CW, $cardH, 6, 'FD');
+
+            // Top Status Badge Pill
+            [$badgeBg, $badgeBorder, $badgeText] = match($f['status']) {
+                'RELIABLE'    => [[236, 253, 245], [16, 185, 129], [5, 150, 105]],
+                'INVESTIGATE' => [[254, 243, 199], [245, 158, 11], [180, 83, 9]],
+                'GAP'         => [[254, 242, 242], [239, 68, 68],  [220, 38, 38]],
+                default       => [[241, 245, 249], [148, 163, 184], [71, 85, 105]]
+            };
+            $pdf->setFillColor($badgeBg[0], $badgeBg[1], $badgeBg[2]);
+            $pdf->setDrawColor($badgeBorder[0], $badgeBorder[1], $badgeBorder[2]);
+            $pdf->roundedRect($M + 12, $cardY + 12, 100, 16, 4, 'FD');
+            $pdf->setTextColor($badgeText[0], $badgeText[1], $badgeText[2]);
+            $pdf->text($M + 18, $cardY + 23, $f['statusLabel'], 7.5, true);
+
+            // Category text
+            $pdf->setTextColor(100, 116, 139);
+            $pdf->text($M + 120, $cardY + 23, $f['category'], 7.5, false);
+
+            // Budget Impact badge on right
+            $impactColor = ($f['impact'] === 'CRITICAL' || $f['impact'] === 'HIGH') ? [220, 38, 38] : [180, 83, 9];
+            $pdf->setTextColor($impactColor[0], $impactColor[1], $impactColor[2]);
+            $pdf->text($M + $CW - 130, $cardY + 23, 'BUDGET IMPACT: ' . $f['impact'], 7.5, true);
+
+            // Finding Title
+            $pdf->setTextColor(15, 23, 42);
+            $pdf->text($M + 12, $cardY + 46, $f['title'], 13, true);
+
+            // User Answer Strip
+            $pdf->setTextColor(100, 116, 139);
+            $pdf->text($M + 12, $cardY + 63, 'You answered:', 8, false);
+
+            $pdf->setFillColor(241, 245, 249);
+            $pdf->setDrawColor(203, 213, 225);
+            $pdf->roundedRect($M + 78, $cardY + 54, 75, 13, 3, 'FD');
+            $pdf->setTextColor(15, 23, 42);
+            $pdf->text($M + 84, $cardY + 63, $f['answerLabel'], 7.5, true);
+
+            // Inner Inset Box (Why It Matters & What To Investigate)
+            $pdf->setFillColor(248, 250, 252);
+            $pdf->setDrawColor(226, 232, 240);
+            $pdf->roundedRect($M + 12, $cardY + 74, $CW - 24, 244, 4, 'FD');
+
+            // Why It Matters
+            $pdf->setTextColor(71, 85, 105);
+            $pdf->text($M + 22, $cardY + 90, 'WHY IT MATTERS', 8, true);
+            $pdf->setTextColor(51, 65, 85);
+            $pdf->multiText($M + 22, $cardY + 103, $CW - 44, $f['whyItMatters'], 8.5, false, 12);
+
+            // What To Investigate
+            $pdf->setTextColor(71, 85, 105);
+            $pdf->text($M + 22, $cardY + 176, 'WHAT TO INVESTIGATE', 8, true);
+            $pdf->setTextColor(51, 65, 85);
+            $pdf->multiText($M + 22, $cardY + 189, $CW - 44, $f['whatToInvestigate'], 8.5, false, 12);
+
+            // Diagnostic prompt footer
+            $pdf->setTextColor(100, 116, 139);
+            $pdf->text($M + 14, $cardY + 338, 'Diagnostic prompt: "' . $f['keyQuestion'] . '"', 7.5, false);
+        }
+
+        $drawPageFooter($currPage);
     }
+
+    // =========================================================================
+    // PAGE 8: THREE POST-AUDIT QUESTIONS & CMGALAXY CONVERSION
+    // =========================================================================
+    $pdf->addPage();
+
+    // Section Header
+    $pdf->setTextColor(15, 23, 42);
+    $pdf->text($M, 52, 'Three questions to discuss after the audit', 18, true);
+    $pdf->setTextColor(100, 116, 139);
+    $pdf->text($M, 70, 'Use these prompts in your next growth, marketing, or executive budget meeting.', 9.5, false);
+
+    // Discussion Card 1
+    $pdf->setFillColor(255, 255, 255);
     $pdf->setDrawColor(226, 232, 240);
-    $pdf->line($M, $y, $M + $CW, $y);
-    $y += 8;
+    $pdf->roundedRect($M, 90, $CW, 84, 6, 'FD');
+    $pdf->setTextColor(2, 132, 199);
+    $pdf->text($M + 16, 116, '01', 17, true);
+    $pdf->setTextColor(15, 23, 42);
+    $pdf->text($M + 48, 112, 'Where do Meta, Google and Shopify disagree the most?', 11, true);
+    $pdf->setTextColor(71, 85, 105);
+    $pdf->multiText($M + 48, 128, $CW - 60, 'Pinpoint whether the variance is in conversion counts, gross vs net revenue, or lookback window assumptions.', 8.5, false, 12);
+
+    // Discussion Card 2
+    $pdf->setFillColor(255, 255, 255);
+    $pdf->setDrawColor(226, 232, 240);
+    $pdf->roundedRect($M, 186, $CW, 84, 6, 'FD');
+    $pdf->setTextColor(2, 132, 199);
+    $pdf->text($M + 16, 212, '02', 17, true);
+    $pdf->setTextColor(15, 23, 42);
+    $pdf->text($M + 48, 208, 'Which disagreement is most likely to change a real budget decision?', 11, true);
+    $pdf->setTextColor(71, 85, 105);
+    $pdf->multiText($M + 48, 224, $CW - 60, 'Focus on high-impact areas like double attribution and new vs returning customer split before minor discrepancies.', 8.5, false, 12);
+
+    // Discussion Card 3
+    $pdf->setFillColor(255, 255, 255);
+    $pdf->setDrawColor(226, 232, 240);
+    $pdf->roundedRect($M, 282, $CW, 84, 6, 'FD');
+    $pdf->setTextColor(2, 132, 199);
+    $pdf->text($M + 16, 308, '03', 17, true);
+    $pdf->setTextColor(15, 23, 42);
+    $pdf->text($M + 48, 304, 'What would your team need to see before trusting one cross-channel view?', 11, true);
+    $pdf->setTextColor(71, 85, 105);
+    $pdf->multiText($M + 48, 320, $CW - 60, 'Determine what unified validation standard (Shopify order reconciliation, incrementality test, or single dashboard) would satisfy both marketing and finance.', 8.5, false, 12);
+
+    // Conversion Banner Box (Dark Navy)
+    $pdf->setFillColor(15, 23, 42);
+    $pdf->setDrawColor(30, 41, 59);
+    $pdf->roundedRect($M, 386, $CW, 160, 8, 'FD');
+
+    $pdf->setTextColor(52, 199, 89);
+    $pdf->text($M + 20, 412, 'READY TO FIX THESE ATTRIBUTION GAPS?', 8, true);
+
+    $pdf->setTextColor(255, 255, 255);
+    $pdf->text($M + 20, 434, 'Turn attribution gaps into clearer marketing decisions.', 14, true);
+
     $pdf->setTextColor(148, 163, 184);
-    $pdf->text($M, $y, 'Generated by CMGalaxy - D2C Attribution Intelligence Platform  |  ' . $generatedDate . ' at ' . $generatedTime, 8, false);
+    $pdf->multiText($M + 20, 452, $CW - 40, 'CMGalaxy helps D2C teams bring marketing and commerce data together, identify reporting gaps, and build a clearer view of what is driving revenue across channels.', 8.5, false, 13);
+
+    // Buttons inside Banner
+    // Button 1: Book a Demo
+    $pdf->setFillColor(52, 199, 89);
+    $pdf->setDrawColor(52, 199, 89);
+    $pdf->roundedRect($M + 20, 488, 130, 26, 13, 'FD');
+    $pdf->setTextColor(255, 255, 255);
+    $pdf->text($M + 46, 504, 'Book a Demo', 9, true);
+
+    // Button 2: Sign up for free
+    $pdf->setFillColor(15, 23, 42);
+    $pdf->setDrawColor(255, 255, 255);
+    $pdf->roundedRect($M + 164, 488, 140, 26, 13, 'FD');
+    $pdf->setTextColor(255, 255, 255);
+    $pdf->text($M + 192, 504, 'Sign up for free', 9, true);
+
+    // Links below
+    $pdf->setTextColor(148, 163, 184);
+    $pdf->text($M + 20, 532, 'Cal.com: https://cal.com/cmgalaxy/demo  |  Platform: https://platform.cmgalaxy.com/sign-up', 7.5, false);
+
+    $drawPageFooter(8);
 
     return $pdf->output();
 }
