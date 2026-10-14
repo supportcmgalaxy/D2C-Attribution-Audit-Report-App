@@ -242,13 +242,10 @@ export const apiService = {
       try {
         result = JSON.parse(text);
       } catch (parseErr) {
-        console.warn('[CMGalaxy Email Service] Raw response (non-JSON):', text);
         return { success: false, error: 'Non-JSON server response' };
       }
-      console.log('[CMGalaxy Server Dispatch] ✉️ Result (Email & Staging Sync):', result);
       return result;
     } catch (err) {
-      console.warn('[CMGalaxy Email Service] ⚠️ Notice:', err.message);
       return { success: false, error: err.message };
     }
   },
@@ -262,7 +259,6 @@ export const apiService = {
     const API_KEY = 'cmg_d2c_lead_8a39f1c7e42d65b09812af43';
 
     try {
-      console.log('[CMGalaxy Staging API] 📡 Dispatching lead directly from browser:', STAGING_URL, leadRecord);
       const response = await fetch(STAGING_URL, {
         method: 'POST',
         headers: {
@@ -272,10 +268,8 @@ export const apiService = {
         body: JSON.stringify(leadRecord)
       });
       const data = await response.json();
-      console.log('[CMGalaxy Staging API] 🚀 Staging API response:', data);
       return { success: response.ok, data };
     } catch (err) {
-      console.warn('[CMGalaxy Staging API] ⚠️ Direct browser call notification:', err.message);
       return { success: false, error: err.message };
     }
   },

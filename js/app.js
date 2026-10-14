@@ -624,6 +624,7 @@ class CMGalaxyAuditApp {
   }
 
   showInputError(inputEl, errorId, show) {
+    if (!inputEl) return;
     const errorEl = document.getElementById(errorId);
     if (show) {
       inputEl.classList.add('has-error');

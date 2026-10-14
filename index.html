@@ -21,9 +21,9 @@
   
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/audit.css">
-  <link rel="stylesheet" href="css/report.css">
+  <link rel="stylesheet" href="css/main.css?v=2.6">
+  <link rel="stylesheet" href="css/audit.css?v=2.6">
+  <link rel="stylesheet" href="css/report.css?v=2.6">
   
   <!-- Google Fonts: Onest Preconnect -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -279,34 +279,32 @@
             </p>
 
             <form class="lead-form" id="lead-capture-form" novalidate>
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="lead-firstname" class="form-label">First Name</label>
-                  <input 
-                    type="text" 
-                    id="lead-firstname" 
-                    name="firstName" 
-                    class="form-input" 
-                    placeholder="e.g. Sarah" 
-                    autocomplete="given-name"
-                    required
-                  >
-                  <span class="form-error-msg" id="error-firstname">Please enter your first name.</span>
-                </div>
+              <div class="form-group">
+                <label for="lead-firstname" class="form-label">First Name</label>
+                <input 
+                  type="text" 
+                  id="lead-firstname" 
+                  name="firstName" 
+                  class="form-input" 
+                  placeholder="e.g. Sarah" 
+                  autocomplete="given-name"
+                  required
+                >
+                <span class="form-error-msg" id="error-firstname">Please enter your first name.</span>
+              </div>
 
-                <div class="form-group">
-                  <label for="lead-lastname" class="form-label">Last Name</label>
-                  <input 
-                    type="text" 
-                    id="lead-lastname" 
-                    name="lastName" 
-                    class="form-input" 
-                    placeholder="e.g. Jenkins" 
-                    autocomplete="family-name"
-                    required
-                  >
-                  <span class="form-error-msg" id="error-lastname">Please enter your last name.</span>
-                </div>
+              <div class="form-group">
+                <label for="lead-lastname" class="form-label">Last Name</label>
+                <input 
+                  type="text" 
+                  id="lead-lastname" 
+                  name="lastName" 
+                  class="form-input" 
+                  placeholder="e.g. Jenkins" 
+                  autocomplete="family-name"
+                  required
+                >
+                <span class="form-error-msg" id="error-lastname">Please enter your last name.</span>
               </div>
 
               <div class="form-group">
@@ -737,6 +735,6 @@
   <!-- End of HubSpot Embed Code -->
 
   <!-- Scripts -->
-  <script type="module" src="js/app.js?v=2.4"></script>
+  <script type="module" src="js/app.js?v=2.6"></script>
 </body>
 </html>

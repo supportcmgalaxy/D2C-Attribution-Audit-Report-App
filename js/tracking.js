@@ -84,6 +84,4 @@ export function trackEvent(eventName, payload = {}) {
   // Keep a debug log in window for development / QA verification
   window.__cmgEvents = window.__cmgEvents || [];
   window.__cmgEvents.push(eventData);
-
-  console.log(`[CMGalaxy Analytics] 📊 ${eventName}`, eventData);
 }
