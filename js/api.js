@@ -170,6 +170,9 @@ export const apiService = {
       lead_type: 'raw',
       is_enriched: false,
       status: 'raw',
+      lifecyclestage: '4435114717',
+      lifecycle_stage: '4435114717',
+      phone: (leadData.phone || '').trim(),
       lead: {
         firstName: (leadData.firstName || '').trim(),
         lastName: (leadData.lastName || '').trim(),
@@ -179,7 +182,9 @@ export const apiService = {
         company: (leadData.company || '').trim(),
         lead_type: 'raw',
         is_enriched: false,
-        status: 'raw'
+        status: 'raw',
+        lifecyclestage: '4435114717',
+        lifecycle_stage: '4435114717'
       },
       answers: structuredAnswers,
       analysis: {

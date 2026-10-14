@@ -5,7 +5,7 @@
 import { AUDIT_QUESTIONS, AUDIT_CATEGORIES, ANSWER_OPTIONS } from './auditData.js';
 import { analyzeAuditAnswers, evaluateAnswer } from './rulesEngine.js';
 import { initUTMTracking, getStoredUTM, trackEvent } from './tracking.js';
-import { apiService } from './api.js?v=2.4';
+import { apiService } from './api.js?v=2.9';
 
 class CMGalaxyAuditApp {
   constructor() {
@@ -601,6 +601,19 @@ class CMGalaxyAuditApp {
 
       this.activeAnalysis = res.analysis;
       this.activeSession = apiService.getSessionFromStorage();
+
+      // Identify visitor in HubSpot CRM with exact lifecyclestage ID
+      if (typeof window !== 'undefined') {
+        window._hsq = window._hsq || [];
+        window._hsq.push(["identify", {
+          email: email,
+          firstname: firstName,
+          lastname: lastName,
+          phone: phone,
+          company: company,
+          lifecyclestage: "4435114717"
+        }]);
+      }
 
       trackEvent('report_viewed', {
         sessionId: this.activeSession.id

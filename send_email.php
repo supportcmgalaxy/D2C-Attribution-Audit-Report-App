@@ -126,7 +126,12 @@ try {
         $fullNameRaw = trim($data['lead']['name'] ?? 'User');
     }
     $userName    = htmlspecialchars(mb_convert_case($fullNameRaw, MB_CASE_TITLE, 'UTF-8'));
-    $userPhone   = htmlspecialchars(trim($data['lead']['phone'] ?? 'N/A'));
+    
+    // Robust Phone Extraction (handles lead.phone, root phone, phoneNumber, etc.)
+    $rawPhone    = $data['lead']['phone'] ?? $data['phone'] ?? $data['lead']['phoneNumber'] ?? $data['lead']['tel'] ?? '';
+    $trimmedPhone = trim((string)$rawPhone);
+    $userPhone   = ($trimmedPhone !== '') ? htmlspecialchars($trimmedPhone) : 'N/A';
+    
     $userEmail   = filter_var($data['lead']['email'] ?? '', FILTER_VALIDATE_EMAIL);
     $userCompany = htmlspecialchars($data['lead']['company'] ?? 'N/A');
     $auditId     = htmlspecialchars($data['id'] ?? 'N/A');
@@ -403,10 +408,14 @@ try {
         $stagingPayload['lead_type'] = 'raw';
         $stagingPayload['is_enriched'] = false;
         $stagingPayload['status'] = 'raw';
+        $stagingPayload['lifecyclestage'] = '4435114717';
+        $stagingPayload['lifecycle_stage'] = '4435114717';
         if (isset($stagingPayload['lead']) && is_array($stagingPayload['lead'])) {
             $stagingPayload['lead']['lead_type'] = 'raw';
             $stagingPayload['lead']['is_enriched'] = false;
             $stagingPayload['lead']['status'] = 'raw';
+            $stagingPayload['lead']['lifecyclestage'] = '4435114717';
+            $stagingPayload['lead']['lifecycle_stage'] = '4435114717';
         }
         $stagingJson = json_encode($stagingPayload);
 
