@@ -5,7 +5,7 @@
 import { AUDIT_QUESTIONS, AUDIT_CATEGORIES, ANSWER_OPTIONS } from './auditData.js';
 import { analyzeAuditAnswers, evaluateAnswer } from './rulesEngine.js';
 import { initUTMTracking, getStoredUTM, trackEvent } from './tracking.js';
-import { apiService } from './api.js?v=3.1';
+import { apiService } from './api.js?v=3.2';
 
 class CMGalaxyAuditApp {
   constructor() {
@@ -605,7 +605,7 @@ class CMGalaxyAuditApp {
       // Identify visitor in HubSpot CRM
       if (typeof window !== 'undefined') {
         window._hsq = window._hsq || [];
-        window._hsq.push(["identify", {
+        const hubspotIdentifyPayload = {
           email: email,
           firstname: firstName,
           lastname: lastName,
@@ -613,10 +613,21 @@ class CMGalaxyAuditApp {
           company: company,
           hs_lead_status: "NEW",
           lead_status: "New",
+          leadstatus: "New",
+          leadStatus: "New",
+          status: "New",
           lead_type: "raw",
           is_enriched: false,
           lifecyclestage: "4435114717"
-        }]);
+        };
+
+        console.group('🟠 [HubSpot CRM Tracking Sync]');
+        console.log('📦 HubSpot Identify Payload:', hubspotIdentifyPayload);
+        console.groupEnd();
+
+        window._hsq.push(["identify", hubspotIdentifyPayload]);
+        // Trigger pageview so HubSpot immediately transmits the identify payload over HTTP
+        window._hsq.push(["trackPageView"]);
       }
 
       trackEvent('report_viewed', {

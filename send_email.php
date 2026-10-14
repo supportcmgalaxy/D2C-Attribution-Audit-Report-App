@@ -380,6 +380,7 @@ try {
         $stagingPayload['status'] = 'new';
         $stagingPayload['lead_status'] = 'New';
         $stagingPayload['hs_lead_status'] = 'NEW';
+        $stagingPayload['leadStatus'] = 'New';
         $stagingPayload['lifecyclestage'] = '4435114717';
         $stagingPayload['lifecycle_stage'] = '4435114717';
         if (isset($stagingPayload['lead']) && is_array($stagingPayload['lead'])) {
@@ -388,6 +389,7 @@ try {
             $stagingPayload['lead']['status'] = 'new';
             $stagingPayload['lead']['lead_status'] = 'New';
             $stagingPayload['lead']['hs_lead_status'] = 'NEW';
+            $stagingPayload['lead']['leadStatus'] = 'New';
             $stagingPayload['lead']['lifecyclestage'] = '4435114717';
             $stagingPayload['lead']['lifecycle_stage'] = '4435114717';
         }
