@@ -1,8 +1,8 @@
 # Disable directory browsing
 Options -Indexes
 
-# Block public browser access to .env and all dotfiles/sensitive files
-<FilesMatch "^\.">
+# Block public browser access to .env, dotfiles, and raw CSV files
+<FilesMatch "(^\.|\.csv$)">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

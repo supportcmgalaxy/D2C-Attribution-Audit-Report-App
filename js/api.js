@@ -167,13 +167,19 @@ export const apiService = {
       id: session.id || generateId(),
       createdAt: session.createdAt || new Date().toISOString(),
       submittedAt: new Date().toISOString(),
+      lead_type: 'raw',
+      is_enriched: false,
+      status: 'raw',
       lead: {
         firstName: (leadData.firstName || '').trim(),
         lastName: (leadData.lastName || '').trim(),
         name: (leadData.name || '').trim(),
         phone: (leadData.phone || '').trim(),
         email: (leadData.email || '').trim().toLowerCase(),
-        company: (leadData.company || '').trim()
+        company: (leadData.company || '').trim(),
+        lead_type: 'raw',
+        is_enriched: false,
+        status: 'raw'
       },
       answers: structuredAnswers,
       analysis: {

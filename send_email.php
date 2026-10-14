@@ -78,6 +78,34 @@ try {
     }
 
     // =========================================================================
+    // 1.6. SECURE EXCEL CSV EXPORT (Browser me direct: send_email.php?export_leads=1&key=cmgalaxy_leads_2026)
+    // =========================================================================
+    if (isset($_GET['export_leads'])) {
+        $secretKey = $_GET['key'] ?? '';
+        if ($secretKey !== 'cmgalaxy_leads_2026') {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['success' => false, 'error' => 'Unauthorized access. Valid secret key required.']);
+            exit;
+        }
+
+        $csvFile = __DIR__ . '/reports/leads.csv';
+        if (!file_exists($csvFile)) {
+            http_response_code(404);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['success' => false, 'error' => 'No leads recorded in Excel sheet yet.']);
+            exit;
+        }
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="cmgalaxy_attribution_leads_' . date('Y-m-d') . '.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        readfile($csvFile);
+        exit;
+    }
+
+    // =========================================================================
     // 2. INPUT DATA PROCESSING
     // =========================================================================
     $rawInput = file_get_contents('php://input');
@@ -139,6 +167,68 @@ try {
     } else {
         $reportSaveResult['error'] = 'Could not write PDF to: ' . $reportFilePath;
         $reportPublicUrl = null; // No URL if save failed
+    }
+
+    // =========================================================================
+    // 2.7. RECORD LEAD TO SERVER EXCEL (CSV) SHEET
+    // =========================================================================
+    $csvRecorded = false;
+    $csvFilePath = $reportsDir . '/leads.csv';
+    $isNewCsv = !file_exists($csvFilePath) || filesize($csvFilePath) === 0;
+    $csvFp = @fopen($csvFilePath, 'a');
+
+    if ($csvFp) {
+        // If new file, write UTF-8 BOM (Byte Order Mark) for Excel compatibility + Header Row
+        if ($isNewCsv) {
+            fputs($csvFp, "\xEF\xBB\xBF");
+            fputcsv($csvFp, [
+                'Submission Date (IST)',
+                'First Name',
+                'Last Name',
+                'Full Name',
+                'Phone Number',
+                'Work Email',
+                'Company / Brand',
+                'Audit ID',
+                'PDF Report Link',
+                'UTM Source',
+                'UTM Medium',
+                'UTM Campaign',
+                'UTM Content',
+                'UTM Term',
+                'Referrer',
+                'Landing Page',
+                'Biggest Finding',
+                'Reliable Count',
+                'Investigate Count',
+                'Attribution Gap Count'
+            ]);
+        }
+
+        fputcsv($csvFp, [
+            date('Y-m-d H:i:s'),
+            $firstName,
+            $lastName,
+            $userName,
+            $userPhone,
+            $userEmail,
+            $userCompany,
+            $auditId,
+            $reportPublicUrl ?: 'N/A',
+            $data['marketingSource']['utmSource'] ?? '',
+            $data['marketingSource']['utmMedium'] ?? '',
+            $data['marketingSource']['utmCampaign'] ?? '',
+            $data['marketingSource']['utmContent'] ?? '',
+            $data['marketingSource']['utmTerm'] ?? '',
+            $data['marketingSource']['referrer'] ?? '',
+            $data['marketingSource']['landingPage'] ?? '',
+            $data['analysis']['biggestFindingHeadline'] ?? '',
+            $data['analysis']['reliableCount'] ?? 0,
+            $data['analysis']['investigateCount'] ?? 0,
+            $data['analysis']['attributionGapCount'] ?? 0
+        ]);
+        fclose($csvFp);
+        $csvRecorded = true;
     }
 
 
@@ -221,19 +311,19 @@ try {
     $adminSubject = "New D2C Attribution Audit Lead: " . $userName . " (" . $userCompany . ")";
 
     $submissionDate = date('F j, Y - H:i') . ' IST';
-    $adminReportBtn = '';
-    if ($reportPublicUrl) {
-        $adminReportBtn = "
-          <div style='text-align: center; margin: 24px 0;'>
-            <a href='{$reportPublicUrl}'
-               style='display: inline-block; background: #34C759; color: #ffffff;
-                      text-decoration: none; padding: 13px 30px; border-radius: 50px;
-                      font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
-                      box-shadow: 0 3px 10px rgba(52,199,89,0.30);'>
-              View Lead &amp; Audit Report &rarr;
-            </a>
-          </div>";
-    }
+    $csvDownloadUrl = SITE_URL . '/send_email.php?export_leads=1&key=cmgalaxy_leads_2026';
+
+    $adminReportBtn = "
+      <div style='text-align: center; margin: 24px 0;'>
+        <a href='{$csvDownloadUrl}'
+           target='_blank'
+           style='display: inline-block; background: #0f172a; color: #ffffff;
+                  text-decoration: none; padding: 14px 32px; border-radius: 50px;
+                  font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
+                  box-shadow: 0 4px 14px rgba(15,23,42,0.25);'>
+          Download Leads (Excel / CSV) &rarr;
+        </a>
+      </div>";
 
     $adminBody = "
     <!DOCTYPE html>
@@ -309,10 +399,21 @@ try {
     $apiKey = 'cmg_d2c_lead_8a39f1c7e42d65b09812af43';
 
     try {
+        $stagingPayload = is_array($data) ? $data : [];
+        $stagingPayload['lead_type'] = 'raw';
+        $stagingPayload['is_enriched'] = false;
+        $stagingPayload['status'] = 'raw';
+        if (isset($stagingPayload['lead']) && is_array($stagingPayload['lead'])) {
+            $stagingPayload['lead']['lead_type'] = 'raw';
+            $stagingPayload['lead']['is_enriched'] = false;
+            $stagingPayload['lead']['status'] = 'raw';
+        }
+        $stagingJson = json_encode($stagingPayload);
+
         $ch = curl_init($stagingUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $rawInput);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $stagingJson);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
             'X-API-Key: ' . $apiKey
@@ -346,6 +447,7 @@ try {
             'error' => $adminResult['error'] ?? null
         ],
         'reportFile' => $reportSaveResult,
+        'excelRecorded' => $csvRecorded,
         'stagingApi' => $stagingResult
     ]);
     exit;
