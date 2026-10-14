@@ -136,6 +136,7 @@ try {
     $userCompany = htmlspecialchars($data['lead']['company'] ?? 'N/A');
     $auditId     = htmlspecialchars($data['id'] ?? 'N/A');
     $submittedAt = htmlspecialchars($data['submittedAt'] ?? date('c'));
+    $submissionDate = date('F j, Y - H:i') . ' IST';
     $answers     = $data['answers'] ?? [];
 
     if (!$userEmail) {
@@ -175,7 +176,7 @@ try {
     }
 
     // =========================================================================
-    // 2.7. RECORD LEAD TO SERVER EXCEL (CSV) SHEET
+    // 2.7. RECORD LEAD TO SERVER EXCEL (CSV) SHEET (Only Core Lead Details)
     // =========================================================================
     $csvRecorded = false;
     $csvFilePath = $reportsDir . '/leads.csv';
@@ -187,50 +188,20 @@ try {
         if ($isNewCsv) {
             fputs($csvFp, "\xEF\xBB\xBF");
             fputcsv($csvFp, [
-                'Submission Date (IST)',
-                'First Name',
-                'Last Name',
-                'Full Name',
-                'Phone Number',
-                'Work Email',
-                'Company / Brand',
-                'Audit ID',
-                'PDF Report Link',
-                'UTM Source',
-                'UTM Medium',
-                'UTM Campaign',
-                'UTM Content',
-                'UTM Term',
-                'Referrer',
-                'Landing Page',
-                'Biggest Finding',
-                'Reliable Count',
-                'Investigate Count',
-                'Attribution Gap Count'
+                'Date',
+                'Name',
+                'Phone',
+                'Email',
+                'Company'
             ]);
         }
 
         fputcsv($csvFp, [
-            date('Y-m-d H:i:s'),
-            $firstName,
-            $lastName,
+            $submissionDate,
             $userName,
             $userPhone,
             $userEmail,
-            $userCompany,
-            $auditId,
-            $reportPublicUrl ?: 'N/A',
-            $data['marketingSource']['utmSource'] ?? '',
-            $data['marketingSource']['utmMedium'] ?? '',
-            $data['marketingSource']['utmCampaign'] ?? '',
-            $data['marketingSource']['utmContent'] ?? '',
-            $data['marketingSource']['utmTerm'] ?? '',
-            $data['marketingSource']['referrer'] ?? '',
-            $data['marketingSource']['landingPage'] ?? '',
-            $data['analysis']['biggestFindingHeadline'] ?? '',
-            $data['analysis']['reliableCount'] ?? 0,
-            $data['analysis']['investigateCount'] ?? 0,
-            $data['analysis']['attributionGapCount'] ?? 0
+            $userCompany
         ]);
         fclose($csvFp);
         $csvRecorded = true;
@@ -315,17 +286,16 @@ try {
     // =========================================================================
     $adminSubject = "New D2C Attribution Audit Lead: " . $userName . " (" . $userCompany . ")";
 
-    $submissionDate = date('F j, Y - H:i') . ' IST';
     $csvDownloadUrl = SITE_URL . '/send_email.php?export_leads=1&key=cmgalaxy_leads_2026';
 
     $adminReportBtn = "
       <div style='text-align: center; margin: 24px 0;'>
         <a href='{$csvDownloadUrl}'
            target='_blank'
-           style='display: inline-block; background: #0f172a; color: #ffffff;
-                  text-decoration: none; padding: 14px 32px; border-radius: 50px;
+           style='display: inline-block; background: #34C759; color: #ffffff;
+                  text-decoration: none; padding: 14px 34px; border-radius: 50px;
                   font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
-                  box-shadow: 0 4px 14px rgba(15,23,42,0.25);'>
+                  box-shadow: 0 4px 14px rgba(52,199,89,0.35);'>
           Download Leads (Excel / CSV) &rarr;
         </a>
       </div>";
@@ -407,13 +377,17 @@ try {
         $stagingPayload = is_array($data) ? $data : [];
         $stagingPayload['lead_type'] = 'raw';
         $stagingPayload['is_enriched'] = false;
-        $stagingPayload['status'] = 'raw';
+        $stagingPayload['status'] = 'new';
+        $stagingPayload['lead_status'] = 'New';
+        $stagingPayload['hs_lead_status'] = 'NEW';
         $stagingPayload['lifecyclestage'] = '4435114717';
         $stagingPayload['lifecycle_stage'] = '4435114717';
         if (isset($stagingPayload['lead']) && is_array($stagingPayload['lead'])) {
             $stagingPayload['lead']['lead_type'] = 'raw';
             $stagingPayload['lead']['is_enriched'] = false;
-            $stagingPayload['lead']['status'] = 'raw';
+            $stagingPayload['lead']['status'] = 'new';
+            $stagingPayload['lead']['lead_status'] = 'New';
+            $stagingPayload['lead']['hs_lead_status'] = 'NEW';
             $stagingPayload['lead']['lifecyclestage'] = '4435114717';
             $stagingPayload['lead']['lifecycle_stage'] = '4435114717';
         }
