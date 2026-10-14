@@ -91,7 +91,14 @@ try {
         exit;
     }
 
-    $userName    = htmlspecialchars(mb_convert_case(trim($data['lead']['name'] ?? 'User'), MB_CASE_TITLE, 'UTF-8'));
+    $firstName   = htmlspecialchars(mb_convert_case(trim($data['lead']['firstName'] ?? ''), MB_CASE_TITLE, 'UTF-8'));
+    $lastName    = htmlspecialchars(mb_convert_case(trim($data['lead']['lastName'] ?? ''), MB_CASE_TITLE, 'UTF-8'));
+    $fullNameRaw = trim($firstName . ' ' . $lastName);
+    if ($fullNameRaw === '') {
+        $fullNameRaw = trim($data['lead']['name'] ?? 'User');
+    }
+    $userName    = htmlspecialchars(mb_convert_case($fullNameRaw, MB_CASE_TITLE, 'UTF-8'));
+    $userPhone   = htmlspecialchars(trim($data['lead']['phone'] ?? 'N/A'));
     $userEmail   = filter_var($data['lead']['email'] ?? '', FILTER_VALIDATE_EMAIL);
     $userCompany = htmlspecialchars($data['lead']['company'] ?? 'N/A');
     $auditId     = htmlspecialchars($data['id'] ?? 'N/A');
@@ -249,6 +256,10 @@ try {
               <tr>
                 <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; color: #64748b; width: 28%;'>Name</td>
                 <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 600; color: #0f172a;'>{$userName}</td>
+              </tr>
+              <tr>
+                <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; color: #64748b;'>Phone</td>
+                <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 600; color: #0f172a;'>{$userPhone}</td>
               </tr>
               <tr>
                 <td style='padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; color: #64748b;'>Email</td>

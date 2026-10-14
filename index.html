@@ -279,18 +279,48 @@
             </p>
 
             <form class="lead-form" id="lead-capture-form" novalidate>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="lead-firstname" class="form-label">First Name</label>
+                  <input 
+                    type="text" 
+                    id="lead-firstname" 
+                    name="firstName" 
+                    class="form-input" 
+                    placeholder="e.g. Sarah" 
+                    autocomplete="given-name"
+                    required
+                  >
+                  <span class="form-error-msg" id="error-firstname">Please enter your first name.</span>
+                </div>
+
+                <div class="form-group">
+                  <label for="lead-lastname" class="form-label">Last Name</label>
+                  <input 
+                    type="text" 
+                    id="lead-lastname" 
+                    name="lastName" 
+                    class="form-input" 
+                    placeholder="e.g. Jenkins" 
+                    autocomplete="family-name"
+                    required
+                  >
+                  <span class="form-error-msg" id="error-lastname">Please enter your last name.</span>
+                </div>
+              </div>
+
               <div class="form-group">
-                <label for="lead-fullname" class="form-label">Full Name</label>
+                <label for="lead-phone" class="form-label">Phone Number</label>
                 <input 
-                  type="text" 
-                  id="lead-fullname" 
-                  name="fullName" 
+                  type="tel" 
+                  id="lead-phone" 
+                  name="phone" 
                   class="form-input" 
-                  placeholder="e.g. Sarah Jenkins" 
-                  autocomplete="name"
+                  placeholder="e.g. +91 98765 43210" 
+                  autocomplete="tel"
                   required
                 >
-                <span class="form-error-msg" id="error-fullname">Please enter your full name.</span>
+                <span class="form-error-msg" id="error-phone">Please enter a valid phone number.</span>
               </div>
 
               <div class="form-group">
@@ -701,6 +731,10 @@
 
     </div>
   </footer>
+
+  <!-- Start of HubSpot Embed Code -->
+  <script type="text/javascript" id="hs-script-loader" async defer src="//js-na2.hs-scripts.com/246183516.js"></script>
+  <!-- End of HubSpot Embed Code -->
 
   <!-- Scripts -->
   <script type="module" src="js/app.js?v=2.4"></script>

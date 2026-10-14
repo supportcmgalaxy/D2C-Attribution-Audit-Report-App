@@ -40,7 +40,9 @@ class CMGalaxyAuditApp {
 
     // Lead capture elements
     this.leadForm = document.getElementById('lead-capture-form');
-    this.inputName = document.getElementById('lead-fullname');
+    this.inputFirstName = document.getElementById('lead-firstname');
+    this.inputLastName = document.getElementById('lead-lastname');
+    this.inputPhone = document.getElementById('lead-phone');
     this.inputEmail = document.getElementById('lead-email');
     this.inputCompany = document.getElementById('lead-company');
     this.btnSubmitLead = document.getElementById('btn-submit-lead');
@@ -239,9 +241,20 @@ class CMGalaxyAuditApp {
       }
     });
 
-    // Lead capture form submission
+    // Lead capture form submission & real-time input error clearing
     if (this.leadForm) {
       this.leadForm.addEventListener('submit', (e) => this.handleLeadSubmit(e));
+      const leadInputs = [this.inputFirstName, this.inputLastName, this.inputPhone, this.inputEmail, this.inputCompany];
+      leadInputs.forEach((input) => {
+        if (input) {
+          input.addEventListener('input', () => {
+            input.classList.remove('has-error');
+            const parent = input.closest('.form-group') || input.parentElement;
+            const errorMsg = parent?.querySelector('.form-error-msg');
+            if (errorMsg) errorMsg.classList.remove('visible');
+          });
+        }
+      });
     }
 
     // Print / Download PDF
@@ -510,18 +523,39 @@ class CMGalaxyAuditApp {
   async handleLeadSubmit(e) {
     e.preventDefault();
 
-    const fullName = this.inputName.value.trim();
-    const email = this.inputEmail.value.trim();
-    const company = this.inputCompany.value.trim();
+    const firstName = this.inputFirstName ? this.inputFirstName.value.trim() : '';
+    const lastName = this.inputLastName ? this.inputLastName.value.trim() : '';
+    const phone = this.inputPhone ? this.inputPhone.value.trim() : '';
+    const email = this.inputEmail ? this.inputEmail.value.trim() : '';
+    const company = this.inputCompany ? this.inputCompany.value.trim() : '';
+
+    const fullName = `${firstName} ${lastName}`.trim();
 
     let hasError = false;
 
-    // Validate Name
-    if (!fullName) {
-      this.showInputError(this.inputName, 'error-fullname', true);
+    // Validate First Name
+    if (!firstName) {
+      this.showInputError(this.inputFirstName, 'error-firstname', true);
       hasError = true;
     } else {
-      this.showInputError(this.inputName, 'error-fullname', false);
+      this.showInputError(this.inputFirstName, 'error-firstname', false);
+    }
+
+    // Validate Last Name
+    if (!lastName) {
+      this.showInputError(this.inputLastName, 'error-lastname', true);
+      hasError = true;
+    } else {
+      this.showInputError(this.inputLastName, 'error-lastname', false);
+    }
+
+    // Validate Phone Number (must have between 7 and 15 digits)
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!phone || phoneDigits.length < 7 || phoneDigits.length > 15) {
+      this.showInputError(this.inputPhone, 'error-phone', true);
+      hasError = true;
+    } else {
+      this.showInputError(this.inputPhone, 'error-phone', false);
     }
 
     // Validate Email (format check)
@@ -551,12 +585,16 @@ class CMGalaxyAuditApp {
     if (spinner) spinner.style.display = 'inline-block';
 
     trackEvent('lead_form_submitted', {
-      hasCompany: Boolean(company)
+      hasCompany: Boolean(company),
+      hasPhone: Boolean(phone)
     });
 
     try {
       const res = await apiService.createLead({
+        firstName: firstName,
+        lastName: lastName,
         name: fullName,
+        phone: phone,
         email: email,
         company: company
       });

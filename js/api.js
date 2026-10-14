@@ -168,9 +168,12 @@ export const apiService = {
       createdAt: session.createdAt || new Date().toISOString(),
       submittedAt: new Date().toISOString(),
       lead: {
-        name: leadData.name.trim(),
-        email: leadData.email.trim().toLowerCase(),
-        company: leadData.company.trim()
+        firstName: (leadData.firstName || '').trim(),
+        lastName: (leadData.lastName || '').trim(),
+        name: (leadData.name || '').trim(),
+        phone: (leadData.phone || '').trim(),
+        email: (leadData.email || '').trim().toLowerCase(),
+        company: (leadData.company || '').trim()
       },
       answers: structuredAnswers,
       analysis: {
@@ -194,7 +197,10 @@ export const apiService = {
     };
 
     // Update active session
+    session.firstName = leadData.firstName || '';
+    session.lastName = leadData.lastName || '';
     session.name = leadData.name;
+    session.phone = leadData.phone || '';
     session.email = leadData.email;
     session.company = leadData.company;
     this.saveSessionToStorage(session);
