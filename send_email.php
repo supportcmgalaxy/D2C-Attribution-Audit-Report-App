@@ -188,16 +188,20 @@ try {
         if ($isNewCsv) {
             fputs($csvFp, "\xEF\xBB\xBF");
             fputcsv($csvFp, [
-                'Date',
-                'Name',
-                'Phone',
-                'Email',
-                'Company'
+                'Submission Date (IST)',
+                'First Name',
+                'Last Name',
+                'Full Name',
+                'Phone Number',
+                'Work Email',
+                'Company / Brand'
             ]);
         }
 
         fputcsv($csvFp, [
             $submissionDate,
+            $firstName,
+            $lastName,
             $userName,
             $userPhone,
             $userEmail,
