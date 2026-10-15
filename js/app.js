@@ -612,13 +612,9 @@ class CMGalaxyAuditApp {
           phone: phone,
           company: company,
           hs_lead_status: "NEW",
-          lead_status: "New",
-          leadstatus: "New",
-          leadStatus: "New",
-          status: "New",
           lead_type: "raw",
           is_enriched: false,
-          lifecyclestage: "4435114717"
+          lifecyclestage: "subscriber"
         };
 
         console.group('🟠 [HubSpot CRM Tracking Sync]');
