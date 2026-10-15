@@ -291,17 +291,21 @@ try {
     $adminSubject = "New D2C Attribution Audit Lead: " . $userName . " (" . $userCompany . ")";
 
     $csvDownloadUrl = SITE_URL . '/send_email.php?export_leads=1&key=cmgalaxy_leads_2026';
+    $hubspotBoardUrl = 'https://app-na2.hubspot.com/contacts/246183516/objects/0-1/views/all/board';
 
     $adminReportBtn = "
       <div style='text-align: center; margin: 24px 0;'>
-        <a href='{$csvDownloadUrl}'
+        <a href='{$hubspotBoardUrl}'
            target='_blank'
-           style='display: inline-block; background: #34C759; color: #ffffff;
+           style='display: inline-block; background: #ff7a59; color: #ffffff;
                   text-decoration: none; padding: 14px 34px; border-radius: 50px;
                   font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
-                  box-shadow: 0 4px 14px rgba(52,199,89,0.35);'>
-          Download Leads (Excel / CSV) &rarr;
+                  box-shadow: 0 4px 14px rgba(255,122,89,0.35);'>
+          View Hubspot &rarr;
         </a>
+        <div style='margin-top: 12px;'>
+          <a href='{$csvDownloadUrl}' target='_blank' style='font-size: 12px; color: #64748b; text-decoration: underline;'>Download Leads (Excel / CSV)</a>
+        </div>
       </div>";
 
     $adminBody = "
@@ -385,8 +389,8 @@ try {
         $stagingPayload['lead_status'] = 'New';
         $stagingPayload['hs_lead_status'] = 'NEW';
         $stagingPayload['leadStatus'] = 'New';
-        $stagingPayload['lifecyclestage'] = '4435114717';
-        $stagingPayload['lifecycle_stage'] = '4435114717';
+        $stagingPayload['lifecyclestage'] = 'subscriber';
+        $stagingPayload['lifecycle_stage'] = 'subscriber';
         if (isset($stagingPayload['lead']) && is_array($stagingPayload['lead'])) {
             $stagingPayload['lead']['lead_type'] = 'raw';
             $stagingPayload['lead']['is_enriched'] = false;
@@ -394,8 +398,8 @@ try {
             $stagingPayload['lead']['lead_status'] = 'New';
             $stagingPayload['lead']['hs_lead_status'] = 'NEW';
             $stagingPayload['lead']['leadStatus'] = 'New';
-            $stagingPayload['lead']['lifecyclestage'] = '4435114717';
-            $stagingPayload['lead']['lifecycle_stage'] = '4435114717';
+            $stagingPayload['lead']['lifecyclestage'] = 'subscriber';
+            $stagingPayload['lead']['lifecycle_stage'] = 'subscriber';
         }
         $stagingJson = json_encode($stagingPayload);
 
