@@ -294,17 +294,35 @@ try {
     $hubspotBoardUrl = 'https://app-na2.hubspot.com/contacts/246183516/objects/0-1/views/all/board';
 
     $adminReportBtn = "
-      <div style='text-align: center; margin: 24px 0;'>
-        <a href='{$hubspotBoardUrl}'
-           target='_blank'
-           style='display: inline-block; background: #ff7a59; color: #ffffff;
-                  text-decoration: none; padding: 14px 34px; border-radius: 50px;
-                  font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
-                  box-shadow: 0 4px 14px rgba(255,122,89,0.35);'>
-          View Hubspot &rarr;
-        </a>
-        <div style='margin-top: 12px;'>
-          <a href='{$csvDownloadUrl}' target='_blank' style='font-size: 12px; color: #64748b; text-decoration: underline;'>Download Leads (Excel / CSV)</a>
+      <div style='text-align: center; margin: 28px 0 20px 0;'>
+        <div style='margin-bottom: 12px;'>
+          <a href='{$hubspotBoardUrl}'
+             target='_blank'
+             style='display: inline-block; background: #34C759; color: #ffffff;
+                    text-decoration: none; padding: 13px 34px; border-radius: 50px;
+                    font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
+                    box-shadow: 0 4px 14px rgba(52,199,89,0.35); margin: 6px;'>
+            View Hubspot &rarr;
+          </a>
+        </div>
+        <div>
+          " . ($reportPublicUrl ? "
+          <a href='{$reportPublicUrl}'
+             target='_blank'
+             style='display: inline-block; background: #0f172a; color: #ffffff;
+                    text-decoration: none; padding: 12px 26px; border-radius: 50px;
+                    font-size: 14px; font-weight: 600; margin: 6px;
+                    box-shadow: 0 3px 10px rgba(15,23,42,0.20);'>
+            View Audit Report &rarr;
+          </a>" : "") . "
+          <a href='{$csvDownloadUrl}'
+             target='_blank'
+             style='display: inline-block; background: #ffffff; color: #0f172a;
+                    border: 1.5px solid #0f172a; text-decoration: none;
+                    padding: 11px 26px; border-radius: 50px;
+                    font-size: 14px; font-weight: 600; margin: 6px;'>
+            Download Leads (Excel) &rarr;
+          </a>
         </div>
       </div>";
 

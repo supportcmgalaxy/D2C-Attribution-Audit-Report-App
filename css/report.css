@@ -4,7 +4,7 @@
  */
 
 .report-view-container {
-  padding: var(--spacing-sm) 0 var(--spacing-xl);
+  padding: var(--spacing-sm) 16px var(--spacing-xl);
 }
 
 .report-header-banner {
@@ -797,6 +797,10 @@
 }
 
 @media (max-width: 600px) {
+  .report-view-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
   .summary-status-grid {
     grid-template-columns: 1fr;
   }

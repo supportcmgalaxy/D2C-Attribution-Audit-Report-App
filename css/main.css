@@ -961,6 +961,10 @@ body {
   .header-container {
     padding: 0 16px;
   }
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
   .nav-signin-link span,
   .util-text {
     display: none;

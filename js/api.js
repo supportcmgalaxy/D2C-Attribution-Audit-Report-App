@@ -44,7 +44,7 @@ export const apiService = {
           }
         }
       } catch (e) {
-        console.warn('LocalStorage error', e);
+        // Silent fallback
       }
     }
 
@@ -115,7 +115,7 @@ export const apiService = {
     try {
       localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(session));
     } catch (e) {
-      console.warn('LocalStorage write failed', e);
+      // Silent fallback
     }
   },
 
@@ -246,10 +246,6 @@ export const apiService = {
    * Dispatches transactional report email to User & Admin via SMTP.
    */
   async sendReportEmail(email, reportData) {
-    console.group('✉️ [CRM / Email Dispatch] -> send_email.php');
-    console.log('📦 Data sent to backend & Server CRM:', reportData);
-    console.groupEnd();
-
     try {
       const response = await fetch('./send_email.php', {
         method: 'POST',
@@ -263,13 +259,10 @@ export const apiService = {
       try {
         result = JSON.parse(text);
       } catch (parseErr) {
-        console.warn('⚠️ Non-JSON server response:', text);
         return { success: false, error: 'Non-JSON server response' };
       }
-      console.log('📬 [send_email.php Response (Includes Server CRM Sync)]:', result);
       return result;
     } catch (err) {
-      console.warn('⚠️ [send_email.php Network Error]:', err.message);
       return { success: false, error: err.message };
     }
   },
@@ -282,11 +275,6 @@ export const apiService = {
     const STAGING_URL = 'https://staging-api.cmgalaxy.com/api/v2/lead_reporting/d_two_c_attribution_lead/';
     const API_KEY = 'cmg_d2c_lead_8a39f1c7e42d65b09812af43';
 
-    console.group('🚀 [CRM Direct Browser Sync] -> CMGalaxy Staging API');
-    console.log('📡 Endpoint:', STAGING_URL);
-    console.log('📦 Exact CRM Payload:', leadRecord);
-    console.groupEnd();
-
     try {
       const response = await fetch(STAGING_URL, {
         method: 'POST',
@@ -297,10 +285,8 @@ export const apiService = {
         body: JSON.stringify(leadRecord)
       });
       const data = await response.json();
-      console.log('✅ [CRM Staging API Direct Response]:', data);
       return { success: response.ok, data };
     } catch (err) {
-      console.warn('⚠️ [CRM Staging API Direct Error]:', err.message);
       return { success: false, error: err.message };
     }
   },

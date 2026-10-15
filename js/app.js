@@ -2,6 +2,19 @@
  * CMGalaxy - Interactive D2C Attribution Audit Application Controller
  */
 
+// Silence all console output in the browser
+if (typeof window !== 'undefined' && window.console) {
+  const noop = () => {};
+  window.console.log = noop;
+  window.console.info = noop;
+  window.console.warn = noop;
+  window.console.error = noop;
+  window.console.debug = noop;
+  window.console.group = noop;
+  window.console.groupEnd = noop;
+  window.console.groupCollapsed = noop;
+}
+
 import { AUDIT_QUESTIONS, AUDIT_CATEGORIES, ANSWER_OPTIONS } from './auditData.js';
 import { analyzeAuditAnswers, evaluateAnswer } from './rulesEngine.js';
 import { initUTMTracking, getStoredUTM, trackEvent } from './tracking.js';
@@ -617,10 +630,6 @@ class CMGalaxyAuditApp {
           lifecyclestage: "subscriber"
         };
 
-        console.group('🟠 [HubSpot CRM Tracking Sync]');
-        console.log('📦 HubSpot Identify Payload:', hubspotIdentifyPayload);
-        console.groupEnd();
-
         window._hsq.push(["identify", hubspotIdentifyPayload]);
         // Trigger pageview so HubSpot immediately transmits the identify payload over HTTP
         window._hsq.push(["trackPageView"]);
@@ -637,7 +646,6 @@ class CMGalaxyAuditApp {
       // Reveal personalized report immediately!
       this.showReport(true);
     } catch (err) {
-      console.error('Lead creation error', err);
       alert("We couldn't generate your report right now. Your answers are saved. Please try again.");
     } finally {
       this.btnSubmitLead.disabled = false;
