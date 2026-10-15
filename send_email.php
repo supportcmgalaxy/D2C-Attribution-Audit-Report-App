@@ -242,8 +242,8 @@ try {
     <body style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;'>
       <div style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;'>
         <div style='background: #0f172a; padding: 24px; color: #ffffff;'>
-          <h2 style='margin: 0; font-size: 20px; font-weight: 700;'>CMGalaxy D2C Attribution Audit</h2>
-          <p style='margin: 4px 0 0 0; color: #94a3b8; font-size: 14px;'>Attribution Report for {$userCompany}</p>
+          <h2 style='margin: 0; font-size: 20px; font-weight: 700; color: #ffffff !important;'>CMGalaxy D2C Attribution Audit</h2>
+          <p style='margin: 4px 0 0 0; color: #94a3b8 !important; font-size: 14px;'>Attribution Report for {$userCompany}</p>
         </div>
         <div style='padding: 28px 24px;'>
           <p style='font-size: 15px; color: #334155; margin-top: 0;'>Hi <strong>{$userName}</strong>,</p>
@@ -295,35 +295,23 @@ try {
 
     $adminReportBtn = "
       <div style='text-align: center; margin: 28px 0 20px 0;'>
-        <div style='margin-bottom: 12px;'>
-          <a href='{$hubspotBoardUrl}'
-             target='_blank'
-             style='display: inline-block; background: #34C759; color: #ffffff;
-                    text-decoration: none; padding: 13px 34px; border-radius: 50px;
-                    font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
-                    box-shadow: 0 4px 14px rgba(52,199,89,0.35); margin: 6px;'>
-            View Hubspot &rarr;
-          </a>
-        </div>
-        <div>
-          " . ($reportPublicUrl ? "
-          <a href='{$reportPublicUrl}'
-             target='_blank'
-             style='display: inline-block; background: #0f172a; color: #ffffff;
-                    text-decoration: none; padding: 12px 26px; border-radius: 50px;
-                    font-size: 14px; font-weight: 600; margin: 6px;
-                    box-shadow: 0 3px 10px rgba(15,23,42,0.20);'>
-            View Audit Report &rarr;
-          </a>" : "") . "
-          <a href='{$csvDownloadUrl}'
-             target='_blank'
-             style='display: inline-block; background: #ffffff; color: #0f172a;
-                    border: 1.5px solid #0f172a; text-decoration: none;
-                    padding: 11px 26px; border-radius: 50px;
-                    font-size: 14px; font-weight: 600; margin: 6px;'>
-            Download Leads (Excel) &rarr;
-          </a>
-        </div>
+        <a href='{$hubspotBoardUrl}'
+           target='_blank'
+           style='display: inline-block; background: #34C759; color: #ffffff;
+                  text-decoration: none; padding: 13px 28px; border-radius: 50px;
+                  font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
+                  box-shadow: 0 4px 14px rgba(52,199,89,0.30); margin: 6px;'>
+          View Hubspot &rarr;
+        </a>
+        " . ($reportPublicUrl ? "
+        <a href='{$reportPublicUrl}'
+           target='_blank'
+           style='display: inline-block; background: #0f172a; color: #ffffff;
+                  text-decoration: none; padding: 13px 28px; border-radius: 50px;
+                  font-size: 14px; font-weight: 600; letter-spacing: 0.3px;
+                  box-shadow: 0 4px 14px rgba(15,23,42,0.25); margin: 6px;'>
+          View Audit Report &rarr;
+        </a>" : "") . "
       </div>";
 
     $adminBody = "
@@ -333,8 +321,8 @@ try {
     <body style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;'>
       <div style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;'>
         <div style='background: #0f172a; padding: 24px; color: #ffffff;'>
-          <h2 style='margin: 0; font-size: 20px; font-weight: 700;'>New D2C Attribution Audit Lead Captured</h2>
-          <p style='margin: 4px 0 0 0; color: #94a3b8; font-size: 14px;'>Lead notification for {$userCompany}</p>
+          <h2 style='margin: 0; font-size: 20px; font-weight: 700; color: #ffffff !important;'>New D2C Attribution Audit Lead Captured</h2>
+          <p style='margin: 4px 0 0 0; color: #94a3b8 !important; font-size: 14px;'>Lead notification for {$userCompany}</p>
         </div>
         <div style='padding: 28px 24px;'>
           <p style='font-size: 15px; color: #334155; margin-top: 0;'>Hi Team,</p>
