@@ -251,7 +251,6 @@ $currentTab = $_GET['tab'] ?? 'leads';
     :root {
       --bg-body: #F8FAFC;
       --bg-surface: #FFFFFF;
-      --bg-surface-hover: #F8FAFC;
       --bg-subtle: #F1F5F9;
       --border-color: #E2E8F0;
       --border-darker: #CBD5E1;
@@ -284,9 +283,11 @@ $currentTab = $_GET['tab'] ?? 'leads';
       --text-muted: #64748B;
       --text-subtle: #94A3B8;
 
+      --sidebar-width: 260px;
+      --topbar-height: 64px;
+
       --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
       --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
-      --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
       --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
 
       --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -308,64 +309,290 @@ $currentTab = $_GET['tab'] ?? 'leads';
       line-height: 1.5;
     }
 
-    /* Top Navigation Bar */
-    .top-nav {
-      background: var(--bg-surface);
-      border-bottom: 1px solid var(--border-color);
-      box-shadow: var(--shadow-sm);
-      position: sticky;
-      top: 0;
-      z-index: 50;
+    /* =========================================================================
+       ADMIN LAYOUT (SIDEBAR + MAIN CONTENT)
+       ========================================================================= */
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
     }
 
-    .top-nav-inner {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 14px 24px;
+    /* Left Sidebar */
+    .admin-sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-color);
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      transition: transform 200ms ease;
+    }
+
+    /* Brand Header inside Sidebar */
+    .sidebar-brand {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
+      gap: 12px;
     }
 
-    .brand-section {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .brand-logo-img {
+    .sidebar-logo {
       height: 32px;
       width: auto;
+      max-width: 145px;
       display: block;
+      object-fit: contain;
     }
 
-    .brand-divider {
-      width: 1px;
-      height: 24px;
-      background: var(--border-color);
+    .sidebar-badge {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--color-primary);
+      background: var(--color-primary-light);
+      border: 1px solid var(--color-primary-border);
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    .brand-title-wrap {
+    /* Navigation Menu */
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+
+    .nav-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-subtle);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 14px 22px 6px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      margin: 3px 12px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-body);
+      text-decoration: none;
+      transition: all 140ms ease;
+    }
+
+    .nav-link:hover {
+      background: var(--bg-subtle);
+      color: var(--text-main);
+    }
+
+    .nav-link.active {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+      font-weight: 700;
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .nav-text {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-counter {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-color);
+    }
+
+    .nav-link.active .nav-counter {
+      background: #DBEAFE;
+      color: var(--color-primary-hover);
+      border-color: var(--color-primary-border);
+    }
+
+    .nav-counter.danger {
+      background: var(--color-danger-light);
+      color: var(--color-danger);
+      border-color: var(--color-danger-border);
+    }
+
+    .nav-tag {
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+    }
+
+    .nav-link-excel {
+      color: var(--color-success);
+    }
+    .nav-link-excel:hover {
+      background: var(--color-success-light);
+      color: var(--color-success-hover);
+    }
+    .nav-link-excel .nav-tag {
+      background: var(--color-success-light);
+      color: var(--color-success);
+      border: 1px solid var(--color-success-border);
+    }
+
+    /* Sidebar Footer (User Profile) */
+    .sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid var(--border-color);
+      background: #FAFCFE;
+    }
+
+    .sidebar-user-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .btn-logout-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-danger);
+      text-decoration: none;
+      transition: background 140ms ease;
+      flex-shrink: 0;
+    }
+    .btn-logout-icon:hover {
+      background: var(--color-danger-light);
+    }
+
+    /* =========================================================================
+       MAIN CONTENT VIEWPORT
+       ========================================================================= */
+    .admin-main {
+      flex: 1;
+      margin-left: var(--sidebar-width);
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
 
-    .brand-title {
-      font-size: 16px;
-      font-weight: 800;
+    /* Topbar */
+    .main-topbar {
+      height: var(--topbar-height);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      gap: 16px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 6px;
       color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .topbar-breadcrumb {
       display: flex;
       align-items: center;
       gap: 8px;
-      letter-spacing: -0.01em;
+      font-size: 13.5px;
+      font-weight: 600;
     }
 
-    .brand-subtitle {
-      font-size: 12px;
+    .crumb-root {
       color: var(--text-muted);
-      font-weight: 500;
+    }
+
+    .crumb-sep {
+      color: var(--border-darker);
+    }
+
+    .crumb-current {
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     .sys-pulse-badge {
@@ -375,9 +602,9 @@ $currentTab = $_GET['tab'] ?? 'leads';
       background: var(--color-success-light);
       border: 1px solid var(--color-success-border);
       color: var(--color-success);
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 700;
-      padding: 3px 9px;
+      padding: 4px 10px;
       border-radius: 9999px;
     }
     .pulse-dot {
@@ -388,13 +615,20 @@ $currentTab = $_GET['tab'] ?? 'leads';
       box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
     }
 
-    /* Nav Actions */
-    .nav-actions {
-      display: flex;
+    .time-indicator {
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 8px;
     }
 
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -403,12 +637,12 @@ $currentTab = $_GET['tab'] ?? 'leads';
       font-family: var(--font-family);
       font-size: 13px;
       font-weight: 600;
-      padding: 9px 16px;
+      padding: 8px 16px;
       border-radius: 8px;
       border: 1px solid transparent;
       cursor: pointer;
       text-decoration: none;
-      transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 150ms ease;
       white-space: nowrap;
     }
 
@@ -425,18 +659,6 @@ $currentTab = $_GET['tab'] ?? 'leads';
       transform: translateY(-1px);
     }
 
-    .btn-secondary {
-      background: var(--bg-surface);
-      border-color: var(--border-color);
-      color: var(--text-body);
-      box-shadow: var(--shadow-sm);
-    }
-    .btn-secondary:hover {
-      background: var(--bg-subtle);
-      border-color: var(--border-darker);
-      color: var(--text-main);
-    }
-
     .btn-primary {
       background: var(--color-primary);
       color: #FFFFFF;
@@ -444,7 +666,6 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
     .btn-primary:hover {
       background: var(--color-primary-hover);
-      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
     }
 
     .btn-danger {
@@ -467,73 +688,16 @@ $currentTab = $_GET['tab'] ?? 'leads';
     .btn-unblock:hover {
       background: var(--color-success);
       color: #FFFFFF;
-      border-color: var(--color-success);
     }
 
-    /* Admin User Pill */
-    .user-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-color);
-      padding: 5px 12px 5px 6px;
-      border-radius: 9999px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .user-avatar {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
-      color: #FFFFFF;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .user-role-tag {
-      font-size: 10.5px;
-      font-weight: 700;
-      color: var(--color-primary);
-      background: var(--color-primary-light);
-      padding: 1px 6px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .btn-logout {
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--color-danger);
-      font-weight: 600;
-      padding: 6px 12px;
-      font-size: 12.5px;
-      border-radius: 6px;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 120ms ease;
-    }
-    .btn-logout:hover {
-      background: var(--color-danger-light);
-      border-color: var(--color-danger-border);
-    }
-
-    /* Main Container */
-    .admin-container {
+    /* Main Content Container */
+    .main-content-inner {
+      padding: 28px 28px 60px;
       max-width: 1400px;
-      margin: 0 auto;
-      padding: 28px 24px 60px;
+      width: 100%;
     }
 
-    /* Page Header Info */
-    .page-title-row {
+    .page-header-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -542,57 +706,41 @@ $currentTab = $_GET['tab'] ?? 'leads';
       gap: 12px;
     }
 
-    .page-title-wrap h1 {
-      font-size: 24px;
+    .page-heading h1 {
+      font-size: 22px;
       font-weight: 800;
       color: var(--text-main);
       letter-spacing: -0.02em;
     }
 
-    .page-title-wrap p {
-      font-size: 13.5px;
+    .page-heading p {
+      font-size: 13px;
       color: var(--text-muted);
       margin-top: 2px;
-    }
-
-    .time-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text-muted);
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      padding: 6px 14px;
-      border-radius: 8px;
-      box-shadow: var(--shadow-sm);
     }
 
     /* KPI Grid */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 18px;
-      margin-bottom: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 26px;
     }
 
     .kpi-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 20px;
+      padding: 18px 20px;
       box-shadow: var(--shadow-card);
-      position: relative;
-      overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      transition: transform 180ms ease, box-shadow 180ms ease;
+      gap: 10px;
+      transition: transform 150ms ease, box-shadow 150ms ease;
     }
     .kpi-card:hover {
       transform: translateY(-2px);
-      box-shadow: var(--shadow-lg);
+      box-shadow: var(--shadow-md);
     }
 
     .kpi-card-top {
@@ -602,29 +750,28 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .kpi-label {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
     }
 
     .kpi-icon-pill {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
     .kpi-blue .kpi-icon-pill { background: var(--color-primary-light); color: var(--color-primary); }
     .kpi-green .kpi-icon-pill { background: var(--color-success-light); color: var(--color-success); }
     .kpi-red .kpi-icon-pill { background: var(--color-danger-light); color: var(--color-danger); }
     .kpi-purple .kpi-icon-pill { background: var(--color-purple-light); color: var(--color-purple); }
 
     .kpi-value {
-      font-size: 34px;
+      font-size: 32px;
       font-weight: 800;
       color: var(--text-main);
       font-family: var(--font-mono);
@@ -633,73 +780,17 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .kpi-footer {
-      font-size: 12.5px;
+      font-size: 12px;
       color: var(--text-muted);
       border-top: 1px solid var(--border-color);
-      padding-top: 10px;
+      padding-top: 8px;
       margin-top: 2px;
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
-    /* Segmented Navigation Tabs */
-    .tabs-wrapper {
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 4px;
-      display: inline-flex;
-      gap: 4px;
-      margin-bottom: 22px;
-      max-width: 100%;
-      overflow-x: auto;
-    }
-
-    .tab-btn {
-      padding: 9px 18px;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-family: var(--font-family);
-      font-size: 13.5px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 7px;
-      transition: all 140ms ease;
-      white-space: nowrap;
-    }
-
-    .tab-btn:hover {
-      color: var(--text-main);
-    }
-
-    .tab-btn.active {
-      background: var(--bg-surface);
-      color: var(--text-main);
-      font-weight: 700;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
-    }
-
-    .tab-counter {
-      background: var(--border-color);
-      color: var(--text-body);
-      padding: 2px 8px;
-      border-radius: 9999px;
-      font-size: 11.5px;
-      font-weight: 700;
-      font-family: var(--font-mono);
-    }
-    .tab-btn.active .tab-counter {
-      background: var(--color-primary-light);
-      color: var(--color-primary);
-    }
-
-    /* Controls Bar */
+    /* Search & Controls */
     .table-controls {
       display: flex;
       align-items: center;
@@ -712,7 +803,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
     .search-box-wrap {
       position: relative;
       flex: 1;
-      max-width: 420px;
+      max-width: 400px;
     }
 
     .search-input {
@@ -720,7 +811,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
       background: var(--bg-surface);
       border: 1px solid var(--border-darker);
       border-radius: 8px;
-      padding: 10px 14px 10px 40px;
+      padding: 9px 14px 9px 38px;
       color: var(--text-main);
       font-family: var(--font-family);
       font-size: 13.5px;
@@ -735,7 +826,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
 
     .search-icon {
       position: absolute;
-      left: 14px;
+      left: 12px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-muted);
@@ -743,15 +834,15 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .record-count-badge {
-      font-size: 13px;
+      font-size: 12.5px;
       color: var(--text-muted);
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
-      padding: 6px 14px;
-      border-radius: 8px;
+      padding: 6px 12px;
+      border-radius: 7px;
     }
 
-    /* Table Card */
+    /* Tables */
     .table-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
@@ -761,7 +852,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .table-card-header {
-      padding: 18px 22px;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border-color);
       background: var(--bg-surface);
       display: flex;
@@ -772,7 +863,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .table-card-title {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 700;
       color: var(--text-main);
       display: flex;
@@ -781,7 +872,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .table-card-sub {
-      font-size: 12.5px;
+      font-size: 12px;
       color: var(--text-muted);
       margin-top: 2px;
     }
@@ -794,7 +885,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
 
     .data-table th {
       background: #F8FAFC;
-      padding: 13px 18px;
+      padding: 12px 16px;
       font-size: 11.5px;
       font-weight: 700;
       color: #475569;
@@ -804,21 +895,17 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .data-table td {
-      padding: 14px 18px;
+      padding: 13px 16px;
       font-size: 13.5px;
       border-bottom: 1px solid #F1F5F9;
       color: var(--text-body);
       vertical-align: middle;
     }
 
-    .data-table tbody tr {
-      transition: background-color 100ms ease;
-    }
     .data-table tbody tr:hover {
       background: #F8FAFC;
     }
 
-    /* Badges */
     .ip-badge {
       font-family: var(--font-mono);
       font-size: 12px;
@@ -855,11 +942,10 @@ $currentTab = $_GET['tab'] ?? 'leads';
       color: var(--color-success);
     }
 
-    /* Risk Badges */
     .risk-badge {
       font-size: 11.5px;
       font-weight: 700;
-      padding: 4px 10px;
+      padding: 3px 9px;
       border-radius: 6px;
       display: inline-block;
     }
@@ -868,7 +954,6 @@ $currentTab = $_GET['tab'] ?? 'leads';
     .risk-high { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
     .risk-critical { background: #FFE4E6; color: #9F1239; border: 1px solid #FDA4AF; }
 
-    /* PDF Link */
     .btn-pdf-link {
       color: var(--color-primary);
       text-decoration: none;
@@ -889,25 +974,23 @@ $currentTab = $_GET['tab'] ?? 'leads';
       border-color: var(--color-primary);
     }
 
-    /* Empty State */
     .empty-state {
-      padding: 56px 20px;
+      padding: 50px 20px;
       text-align: center;
       color: var(--text-muted);
     }
     .empty-state-icon {
-      font-size: 36px;
-      margin-bottom: 12px;
+      font-size: 34px;
+      margin-bottom: 10px;
       opacity: 0.7;
     }
     .empty-state-title {
       font-size: 16px;
       font-weight: 700;
       color: var(--text-main);
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
-    /* Success / Error Banners */
     .alert-banner {
       padding: 12px 16px;
       border-radius: 8px;
@@ -931,7 +1014,40 @@ $currentTab = $_GET['tab'] ?? 'leads';
       color: #991B1B;
     }
 
-    /* Light Theme Login Screen */
+    /* Mobile Drawer */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      z-index: 90;
+    }
+
+    @media (max-width: 992px) {
+      .admin-sidebar {
+        transform: translateX(-100%);
+      }
+      .admin-sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-overlay.open {
+        display: block;
+      }
+      .admin-main {
+        margin-left: 0;
+      }
+      .mobile-menu-btn {
+        display: inline-flex;
+      }
+      .main-topbar {
+        padding: 0 16px;
+      }
+      .main-content-inner {
+        padding: 20px 16px 40px;
+      }
+    }
+
+    /* Login Screen */
     .login-wrapper {
       min-height: 100vh;
       display: flex;
@@ -1031,7 +1147,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
 
 <?php if (!$isAuthenticated): ?>
   <!-- =========================================================================
-       EXECUTIVE LIGHT-MODE LOGIN SCREEN
+       LOGIN SCREEN
        ========================================================================= -->
   <div class="login-wrapper">
     <div class="login-card">
@@ -1100,545 +1216,626 @@ $currentTab = $_GET['tab'] ?? 'leads';
 
 <?php else: ?>
   <!-- =========================================================================
-       AUTHENTICATED EXECUTIVE LIGHT DASHBOARD
+       AUTHENTICATED ENTERPRISE SIDEBAR ADMIN PORTAL
        ========================================================================= -->
-  
-  <!-- Top Navigation Bar -->
-  <header class="top-nav">
-    <div class="top-nav-inner">
-      <div class="brand-section">
+  <div class="admin-layout">
+    
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="admin-sidebar" id="admin-sidebar">
+      
+      <!-- Sidebar Brand Area -->
+      <div class="sidebar-brand">
         <a href="https://www.cmgalaxy.com/" target="_blank" rel="noopener noreferrer">
-          <img src="assets/cmgalaxy-logo.png" alt="CMGalaxy Logo" class="brand-logo-img">
+          <img src="assets/cmgalaxy-logo.png" alt="CMGalaxy Logo" class="sidebar-logo">
         </a>
-        <div class="brand-divider"></div>
-        <div class="brand-title-wrap">
-          <div class="brand-title">
-            D2C Attribution Intelligence
-            <span class="sys-pulse-badge">
-              <span class="pulse-dot"></span>
-              Live Protected
-            </span>
-          </div>
-          <div class="brand-subtitle">Executive Lead Captures & IP Rate Limit Security Portal</div>
-        </div>
+        <span class="sidebar-badge">Admin</span>
       </div>
 
-      <div class="nav-actions">
-        <!-- 1-Click Excel Export Button -->
-        <a href="admin.php?action=export_excel" class="btn btn-excel" title="Download all form leads in Microsoft Excel (.csv) format">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+        
+        <div class="nav-section-title">Leads & Audits</div>
+        
+        <!-- Tab 1: Form Submissions -->
+        <a href="admin.php?tab=leads" class="nav-link <?= $currentTab === 'leads' ? 'active' : '' ?>">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span class="nav-text">Form Submissions</span>
+          <span class="nav-counter"><?= count($leadsList) ?></span>
+        </a>
+
+        <div class="nav-section-title">Security & Traffic</div>
+
+        <!-- Tab 2: Blocked IPs -->
+        <a href="admin.php?tab=security" class="nav-link <?= $currentTab === 'security' ? 'active' : '' ?>">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <span class="nav-text">Blocked Spam IPs</span>
+          <span class="nav-counter <?= $activeBlockedCount > 0 ? 'danger' : '' ?>">
+            <?= $activeBlockedCount ?>
+          </span>
+        </a>
+
+        <!-- Tab 3: Rate Limit Monitor -->
+        <a href="admin.php?tab=traffic" class="nav-link <?= $currentTab === 'traffic' ? 'active' : '' ?>">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span class="nav-text">Rate Limit Monitor</span>
+          <span class="nav-counter"><?= count($activeTrackers) ?></span>
+        </a>
+
+        <div class="nav-section-title">Quick Actions</div>
+
+        <!-- Export to Excel -->
+        <a href="admin.php?action=export_excel" class="nav-link nav-link-excel" title="Download all leads in Microsoft Excel (.csv)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          Export Excel Sheet
+          <span class="nav-text">Export to Excel</span>
+          <span class="nav-tag">CSV</span>
         </a>
 
-        <!-- Open Live Public App -->
-        <a href="index.html" target="_blank" class="btn btn-secondary" title="Preview public audit tool">
-          Public App ↗
+        <!-- Public App Preview -->
+        <a href="index.html" target="_blank" class="nav-link" title="Open live public audit application">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          <span class="nav-text">Public App</span>
+          <span class="nav-tag">↗</span>
         </a>
 
-        <!-- Admin Profile Pill -->
-        <div class="user-pill" title="Currently authenticated admin">
+      </nav>
+
+      <!-- Sidebar User Footer -->
+      <div class="sidebar-footer">
+        <div class="sidebar-user-card">
           <div class="user-avatar">
             <?= strtoupper(substr($_SESSION['cmg_admin_user'] ?? 'A', 0, 1)) ?>
           </div>
-          <span><?= htmlspecialchars($_SESSION['cmg_admin_user'] ?? 'Admin') ?></span>
-          <span class="user-role-tag">Super Admin</span>
+          <div class="user-details">
+            <div class="user-name"><?= htmlspecialchars($_SESSION['cmg_admin_user'] ?? 'Admin') ?></div>
+            <div class="user-role">Super Admin</div>
+          </div>
+          <a href="admin.php?logout=1" class="btn-logout-icon" title="Logout from console">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </a>
         </div>
-
-        <!-- Logout -->
-        <a href="admin.php?logout=1" class="btn-logout" title="Sign out from console">
-          Logout
-        </a>
       </div>
-    </div>
-  </header>
 
-  <!-- Main Content Container -->
-  <div class="admin-container">
+    </aside>
 
-    <!-- Page Title & Live Clock -->
-    <div class="page-title-row">
-      <div class="page-title-wrap">
-        <h1>Overview & Security Console</h1>
-        <p>Monitor real-time audit conversions, manage blocked spam IPs, and track 24-hour rate limit compliance.</p>
-      </div>
-      <div class="time-indicator">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        <span>IST: <?= date('M j, Y • h:i A') ?></span>
-      </div>
-    </div>
-
-    <!-- Feedback Alerts -->
-    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'unblocked'): ?>
-      <div class="alert-banner alert-success">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-        <div>IP address has been unblocked successfully, and its rate limit counters have been reset.</div>
-      </div>
-    <?php elseif (isset($_GET['msg']) && $_GET['msg'] === 'blocked'): ?>
-      <div class="alert-banner alert-error">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-        </svg>
-        <div>IP address has been manually blocked from form submissions for 24 hours.</div>
-      </div>
-    <?php endif; ?>
-
-    <!-- KPI Metric Cards Grid -->
-    <div class="kpi-grid">
+    <!-- MAIN VIEWPORT -->
+    <main class="admin-main">
       
-      <!-- Card 1: Total Leads -->
-      <div class="kpi-card kpi-blue">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Total Leads Captured</span>
-          <div class="kpi-icon-pill">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      <!-- Topbar Header -->
+      <header class="main-topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobile-toggle" aria-label="Toggle Navigation">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
+          </button>
+          
+          <div class="topbar-breadcrumb">
+            <span class="crumb-root">Console</span>
+            <span class="crumb-sep">/</span>
+            <span class="crumb-current">
+              <?php
+                if ($currentTab === 'security') echo 'Blocked Spam IPs & Security';
+                elseif ($currentTab === 'traffic') echo 'Live IP Rate Limit Monitor';
+                else echo 'Form Submissions (Leads)';
+              ?>
+            </span>
           </div>
         </div>
-        <div class="kpi-value"><?= count($leadsList) ?></div>
-        <div class="kpi-footer">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-          </svg>
-          All-time verified audit submissions
-        </div>
-      </div>
 
-      <!-- Card 2: Today's Submissions -->
-      <div class="kpi-card kpi-green">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Today's Form Submissions</span>
-          <div class="kpi-icon-pill">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
+        <div class="topbar-right">
+          <div class="sys-pulse-badge">
+            <span class="pulse-dot"></span>
+            <span>Live Protected</span>
           </div>
-        </div>
-        <div class="kpi-value" style="color: var(--color-success);"><?= $todayLeadsCount ?></div>
-        <div class="kpi-footer">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          Past 24 hours rolling window
-        </div>
-      </div>
 
-      <!-- Card 3: Blocked Spam IPs -->
-      <div class="kpi-card kpi-red">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Blocked Spam IPs</span>
-          <div class="kpi-icon-pill">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              <line x1="9.5" y1="9" x2="14.5" y2="14"></line>
-              <line x1="14.5" y1="9" x2="9.5" y2="14"></line>
-            </svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color: <?= $activeBlockedCount > 0 ? 'var(--color-danger)' : 'var(--text-main)' ?>;">
-          <?= $activeBlockedCount ?>
-        </div>
-        <div class="kpi-footer">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          Exceeded 3 forms/day limit
-        </div>
-      </div>
-
-      <!-- Card 4: Active Monitored IPs -->
-      <div class="kpi-card kpi-purple">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Active Monitored IPs</span>
-          <div class="kpi-icon-pill">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <div class="time-indicator">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
-              <path d="M2 12h20"></path>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
+            <span>IST: <?= date('M j, Y • h:i A') ?></span>
+          </div>
+
+          <!-- 1-Click Excel Download Button -->
+          <a href="admin.php?action=export_excel" class="btn btn-excel" title="Download all leads in Microsoft Excel (.csv)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export Excel
+          </a>
+        </div>
+      </header>
+
+      <!-- Main Content Inner Wrapper -->
+      <div class="main-content-inner">
+
+        <!-- Page Header Info -->
+        <div class="page-header-row">
+          <div class="page-heading">
+            <h1>
+              <?php
+                if ($currentTab === 'security') echo 'Security & Blocked Spam IPs';
+                elseif ($currentTab === 'traffic') echo '24-Hour IP Rate Limit Monitor';
+                else echo 'D2C Attribution Form Submissions';
+              ?>
+            </h1>
+            <p>
+              <?php
+                if ($currentTab === 'security') echo 'Review automated spam filters and manage blacklisted IP addresses.';
+                elseif ($currentTab === 'traffic') echo 'Real-time tracking of 3 submissions per 24 hours per unique IP address.';
+                else echo 'All verified form captures with lead contact details and generated PDF audit reports.';
+              ?>
+            </p>
           </div>
         </div>
-        <div class="kpi-value" style="color: var(--color-purple);"><?= count($activeTrackers) ?></div>
-        <div class="kpi-footer">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-          </svg>
-          Unique visitors submitting today
-        </div>
-      </div>
 
-    </div>
-
-    <!-- Segmented Navigation Tabs -->
-    <div class="tabs-wrapper">
-      <a href="admin.php?tab=leads" class="tab-btn <?= $currentTab === 'leads' ? 'active' : '' ?>">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        Form Submissions (Leads)
-        <span class="tab-counter"><?= count($leadsList) ?></span>
-      </a>
-      
-      <a href="admin.php?tab=security" class="tab-btn <?= $currentTab === 'security' ? 'active' : '' ?>">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>
-        Blocked IPs & Security Log
-        <span class="tab-counter"><?= $activeBlockedCount ?></span>
-      </a>
-
-      <a href="admin.php?tab=traffic" class="tab-btn <?= $currentTab === 'traffic' ? 'active' : '' ?>">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-        </svg>
-        Live 24h Rate Limit Monitor
-        <span class="tab-counter"><?= count($activeTrackers) ?></span>
-      </a>
-    </div>
-
-    <!-- TAB 1: FORM SUBMISSIONS (LEADS) -->
-    <?php if ($currentTab === 'leads'): ?>
-      <div class="table-controls">
-        <div class="search-box-wrap">
-          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="lead-search" class="search-input" placeholder="Search by name, email, company, IP...">
-        </div>
-
-        <div class="record-count-badge">
-          Showing <strong><?= count($leadsList) ?></strong> recorded submissions
-        </div>
-      </div>
-
-      <div class="table-card">
-        <?php if (empty($leadsList)): ?>
-          <div class="empty-state">
-            <div class="empty-state-icon">📋</div>
-            <div class="empty-state-title">No Form Submissions Yet</div>
-            <p>When visitors complete the lead capture form, their details and generated PDF audit reports will show up here in real time.</p>
+        <!-- Feedback Alert Messages -->
+        <?php if (isset($_GET['msg']) && $_GET['msg'] === 'unblocked'): ?>
+          <div class="alert-banner alert-success">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <div>IP address has been unblocked successfully, and its rate limit counters have been reset.</div>
           </div>
-        <?php else: ?>
-          <div style="overflow-x: auto;">
-            <table class="data-table" id="leads-table">
-              <thead>
-                <tr>
-                  <th>Date & Time (IST)</th>
-                  <th>Full Name</th>
-                  <th>Company / Brand</th>
-                  <th>Work Email</th>
-                  <th>Phone Number</th>
-                  <th>Client IP</th>
-                  <th>Audit Risk Level</th>
-                  <th>PDF Report</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($leadsList as $lead): ?>
-                  <?php
-                    $riskClass = 'risk-moderate';
-                    $risk = strtolower($lead['riskLevel'] ?? 'moderate');
-                    if (str_contains($risk, 'low')) $riskClass = 'risk-low';
-                    elseif (str_contains($risk, 'critical')) $riskClass = 'risk-critical';
-                    elseif (str_contains($risk, 'high')) $riskClass = 'risk-high';
-                  ?>
-                  <tr>
-                    <td style="white-space: nowrap; font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
-                      <?= htmlspecialchars($lead['date'] ?? 'N/A') ?>
-                    </td>
-                    <td>
-                      <strong style="color: var(--text-main); font-weight: 700;">
-                        <?= htmlspecialchars($lead['fullName'] ?? 'N/A') ?>
-                      </strong>
-                    </td>
-                    <td>
-                      <span style="font-weight: 600; color: #1E293B;">
-                        <?= htmlspecialchars($lead['company'] ?? 'N/A') ?>
-                      </span>
-                    </td>
-                    <td>
-                      <a href="mailto:<?= htmlspecialchars($lead['email'] ?? '') ?>" style="color: var(--color-primary); text-decoration: none; font-weight: 500;">
-                        <?= htmlspecialchars($lead['email'] ?? 'N/A') ?>
-                      </a>
-                    </td>
-                    <td style="font-family: var(--font-mono); font-size: 12.5px; color: var(--text-main);">
-                      <?= htmlspecialchars($lead['phone'] ?? 'N/A') ?>
-                    </td>
-                    <td>
-                      <span class="ip-badge"><?= htmlspecialchars($lead['ip'] ?? 'Unknown') ?></span>
-                    </td>
-                    <td>
-                      <span class="risk-badge <?= $riskClass ?>">
-                        <?= htmlspecialchars($lead['riskLevel'] ?? 'Moderate') ?>
-                      </span>
-                    </td>
-                    <td>
-                      <?php if (!empty($lead['pdfUrl'])): ?>
-                        <a href="<?= htmlspecialchars($lead['pdfUrl']) ?>" target="_blank" class="btn-pdf-link" title="Download or preview generated PDF report">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                          </svg>
-                          Download PDF
-                        </a>
-                      <?php else: ?>
-                        <span style="color: var(--text-muted); font-size: 12px;">Archived</span>
-                      <?php endif; ?>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        <?php endif; ?>
-      </div>
-
-    <!-- TAB 2: BLOCKED IPS & SECURITY -->
-    <?php elseif ($currentTab === 'security'): ?>
-      
-      <!-- Manual Block Form Card -->
-      <div class="table-card" style="padding: 22px; margin-bottom: 24px;">
-        <div style="margin-bottom: 14px;">
-          <h3 style="font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--color-danger);">
+        <?php elseif (isset($_GET['msg']) && $_GET['msg'] === 'blocked'): ?>
+          <div class="alert-banner alert-error">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
             </svg>
-            Manually Blacklist An IP Address (24-Hour Block)
-          </h3>
-          <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
-            Enter an IP address below to immediately prevent it from requesting OTPs or submitting audit forms.
-          </p>
-        </div>
-
-        <form method="POST" action="admin.php?tab=security" style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <input type="hidden" name="action" value="manual_block">
-          <input 
-            type="text" 
-            name="ip" 
-            class="search-input" 
-            placeholder="e.g. 103.21.244.1" 
-            style="flex: 1; min-width: 220px;" 
-            required
-          >
-          <input 
-            type="text" 
-            name="reason" 
-            class="search-input" 
-            placeholder="Reason for blocking (e.g. Suspicious automated spam bot)" 
-            style="flex: 2; min-width: 280px;"
-          >
-          <button type="submit" class="btn btn-danger">
-            Blacklist IP (24 Hours)
-          </button>
-        </form>
-      </div>
-
-      <!-- Blocked IPs Table Card -->
-      <div class="table-card">
-        <div class="table-card-header">
-          <div>
-            <div class="table-card-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-danger);">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-              Blocked IP Addresses & Security Events
-            </div>
-            <div class="table-card-sub">Automatic triggers: Exceeding 3 submissions in 24 hours or OTP flooding</div>
-          </div>
-          <span class="record-count-badge">
-            <strong><?= $activeBlockedCount ?></strong> active blocks
-          </span>
-        </div>
-
-        <?php if (empty($blockedList)): ?>
-          <div class="empty-state">
-            <div class="empty-state-icon">🛡️</div>
-            <div class="empty-state-title">No Blocked IPs Currently</div>
-            <p>When an IP address exceeds the 3 submissions per day limit, it will automatically appear here with 1-click unblock capability.</p>
-          </div>
-        <?php else: ?>
-          <div style="overflow-x: auto;">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Blocked IP Address</th>
-                  <th>Block Reason</th>
-                  <th>Attempts</th>
-                  <th>Blocked At (IST)</th>
-                  <th>Time Remaining</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($blockedList as $ip => $item): ?>
-                  <?php
-                    $isStillActive = !empty($item['active']) && $now < ($item['expires_at'] ?? 0);
-                    $hoursRemaining = $isStillActive ? ceil(($item['expires_at'] - $now) / 3600) : 0;
-                  ?>
-                  <tr>
-                    <td>
-                      <span class="ip-badge" style="color: #B91C1C; background: #FEE2E2; border-color: #FECACA; font-weight: 700;">
-                        <?= htmlspecialchars($ip) ?>
-                      </span>
-                    </td>
-                    <td><?= htmlspecialchars($item['reason'] ?? 'Exceeded rate limit') ?></td>
-                    <td style="font-family: var(--font-mono); font-weight: 700;">
-                      <?= (int)($item['attempts'] ?? 0) ?>
-                    </td>
-                    <td style="font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
-                      <?= date('M j, Y - H:i', $item['blocked_at'] ?? time()) ?>
-                    </td>
-                    <td>
-                      <?php if ($isStillActive): ?>
-                        <span style="color: var(--color-warning); font-weight: 700; font-size: 12.5px;">
-                          ~<?= $hoursRemaining ?> hr(s)
-                        </span>
-                      <?php else: ?>
-                        <span style="color: var(--text-muted); font-size: 12.5px;">Expired</span>
-                      <?php endif; ?>
-                    </td>
-                    <td>
-                      <?php if ($isStillActive): ?>
-                        <span class="status-badge status-blocked">Blocked</span>
-                      <?php else: ?>
-                        <span class="status-badge status-active">Released</span>
-                      <?php endif; ?>
-                    </td>
-                    <td>
-                      <a href="admin.php?action=unblock&ip=<?= urlencode($ip) ?>" 
-                         onclick="return confirm('Are you sure you want to unblock <?= htmlspecialchars($ip) ?> and reset its submission limit?')" 
-                         class="btn btn-unblock">
-                        Unblock & Reset
-                      </a>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
+            <div>IP address has been manually blocked from form submissions for 24 hours.</div>
           </div>
         <?php endif; ?>
-      </div>
 
-    <!-- TAB 3: LIVE IP RATE LIMIT MONITOR -->
-    <?php elseif ($currentTab === 'traffic'): ?>
-      <div class="table-card">
-        <div class="table-card-header">
-          <div>
-            <div class="table-card-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-purple);">
+        <!-- KPI Metric Cards Grid -->
+        <div class="kpi-grid">
+          
+          <!-- Card 1: Total Leads -->
+          <div class="kpi-card kpi-blue">
+            <div class="kpi-card-top">
+              <span class="kpi-label">Total Leads</span>
+              <div class="kpi-icon-pill">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value"><?= count($leadsList) ?></div>
+            <div class="kpi-footer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
               </svg>
-              24-Hour Rolling IP Limit Tracker
+              All-time form submissions
             </div>
-            <div class="table-card-sub">Global Rule: Each unique IP address is permitted up to 3 form submissions every 24 hours</div>
           </div>
-          <span class="sys-pulse-badge">
-            <span class="pulse-dot"></span>
-            Live Monitoring
-          </span>
+
+          <!-- Card 2: Today's Submissions -->
+          <div class="kpi-card kpi-green">
+            <div class="kpi-card-top">
+              <span class="kpi-label">Today's Leads</span>
+              <div class="kpi-icon-pill">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value" style="color: var(--color-success);"><?= $todayLeadsCount ?></div>
+            <div class="kpi-footer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              Past 24 hours window
+            </div>
+          </div>
+
+          <!-- Card 3: Blocked Spam IPs -->
+          <div class="kpi-card kpi-red">
+            <div class="kpi-card-top">
+              <span class="kpi-label">Blocked Spam IPs</span>
+              <div class="kpi-icon-pill">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  <line x1="9.5" y1="9" x2="14.5" y2="14"></line>
+                  <line x1="14.5" y1="9" x2="9.5" y2="14"></line>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value" style="color: <?= $activeBlockedCount > 0 ? 'var(--color-danger)' : 'var(--text-main)' ?>;">
+              <?= $activeBlockedCount ?>
+            </div>
+            <div class="kpi-footer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Exceeded 3 forms/day limit
+            </div>
+          </div>
+
+          <!-- Card 4: Active Monitored IPs -->
+          <div class="kpi-card kpi-purple">
+            <div class="kpi-card-top">
+              <span class="kpi-label">Monitored IPs</span>
+              <div class="kpi-icon-pill">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M2 12h20"></path>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value" style="color: var(--color-purple);"><?= count($activeTrackers) ?></div>
+            <div class="kpi-footer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              </svg>
+              Unique visitors today
+            </div>
+          </div>
+
         </div>
 
-        <?php if (empty($activeTrackers)): ?>
-          <div class="empty-state">
-            <div class="empty-state-icon">⚡</div>
-            <div class="empty-state-title">No Active Traffic Recorded In Last 24 Hours</div>
-            <p>As visitors interact with the audit tool, their submission quotas will update here live.</p>
+        <!-- TAB 1: FORM SUBMISSIONS (LEADS) -->
+        <?php if ($currentTab === 'leads'): ?>
+          <div class="table-controls">
+            <div class="search-box-wrap">
+              <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="lead-search" class="search-input" placeholder="Search by name, email, company, IP...">
+            </div>
+
+            <div class="record-count-badge">
+              Showing <strong><?= count($leadsList) ?></strong> recorded submissions
+            </div>
           </div>
-        <?php else: ?>
-          <div style="overflow-x: auto;">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Client IP</th>
-                  <th>Submissions Used</th>
-                  <th>Quota Remaining</th>
-                  <th>First Submission (IST)</th>
-                  <th>Security Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($activeTrackers as $trk): ?>
-                  <?php
-                    $used = (int)($trk['count'] ?? 0);
-                    $rem = max(0, 3 - $used);
-                    $isBlocked = $used >= 3;
-                  ?>
-                  <tr>
-                    <td>
-                      <span class="ip-badge"><?= htmlspecialchars($trk['ip'] ?? 'Unknown') ?></span>
-                    </td>
-                    <td>
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-family: var(--font-mono); font-weight: 800; color: <?= $isBlocked ? '#DC2626' : ($used === 2 ? '#D97706' : '#059669') ?>">
-                          <?= $used ?> / 3
-                        </span>
-                        <div style="width: 70px; height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden;">
-                          <div style="width: <?= min(100, ($used / 3) * 100) ?>%; height: 100%; background: <?= $isBlocked ? '#DC2626' : ($used === 2 ? '#D97706' : '#10B981') ?>;"></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style="font-family: var(--font-mono); font-size: 13px; font-weight: 600;">
-                      <?= $rem ?> remaining
-                    </td>
-                    <td style="font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
-                      <?= date('M j, Y - H:i', $trk['start'] ?? time()) ?>
-                    </td>
-                    <td>
-                      <?php if ($isBlocked): ?>
-                        <span class="status-badge status-blocked">Limit Exceeded</span>
-                      <?php else: ?>
-                        <span class="status-badge status-active">Allowed</span>
-                      <?php endif; ?>
-                    </td>
-                    <td>
-                      <?php if ($isBlocked): ?>
-                        <a href="admin.php?action=unblock&ip=<?= urlencode($trk['ip']) ?>" class="btn btn-unblock">
-                          Reset Limit
-                        </a>
-                      <?php else: ?>
-                        <span style="color: var(--text-muted); font-size: 12.5px;">Within Quota</span>
-                      <?php endif; ?>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
+
+          <div class="table-card">
+            <?php if (empty($leadsList)): ?>
+              <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <div class="empty-state-title">No Form Submissions Yet</div>
+                <p>When visitors complete the lead capture form, their details and generated PDF audit reports will show up here in real time.</p>
+              </div>
+            <?php else: ?>
+              <div style="overflow-x: auto;">
+                <table class="data-table" id="leads-table">
+                  <thead>
+                    <tr>
+                      <th>Date & Time (IST)</th>
+                      <th>Full Name</th>
+                      <th>Company / Brand</th>
+                      <th>Work Email</th>
+                      <th>Phone Number</th>
+                      <th>Client IP</th>
+                      <th>Audit Risk Level</th>
+                      <th>PDF Report</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($leadsList as $lead): ?>
+                      <?php
+                        $riskClass = 'risk-moderate';
+                        $risk = strtolower($lead['riskLevel'] ?? 'moderate');
+                        if (str_contains($risk, 'low')) $riskClass = 'risk-low';
+                        elseif (str_contains($risk, 'critical')) $riskClass = 'risk-critical';
+                        elseif (str_contains($risk, 'high')) $riskClass = 'risk-high';
+                      ?>
+                      <tr>
+                        <td style="white-space: nowrap; font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
+                          <?= htmlspecialchars($lead['date'] ?? 'N/A') ?>
+                        </td>
+                        <td>
+                          <strong style="color: var(--text-main); font-weight: 700;">
+                            <?= htmlspecialchars($lead['fullName'] ?? 'N/A') ?>
+                          </strong>
+                        </td>
+                        <td>
+                          <span style="font-weight: 600; color: #1E293B;">
+                            <?= htmlspecialchars($lead['company'] ?? 'N/A') ?>
+                          </span>
+                        </td>
+                        <td>
+                          <a href="mailto:<?= htmlspecialchars($lead['email'] ?? '') ?>" style="color: var(--color-primary); text-decoration: none; font-weight: 500;">
+                            <?= htmlspecialchars($lead['email'] ?? 'N/A') ?>
+                          </a>
+                        </td>
+                        <td style="font-family: var(--font-mono); font-size: 12.5px; color: var(--text-main);">
+                          <?= htmlspecialchars($lead['phone'] ?? 'N/A') ?>
+                        </td>
+                        <td>
+                          <span class="ip-badge"><?= htmlspecialchars($lead['ip'] ?? 'Unknown') ?></span>
+                        </td>
+                        <td>
+                          <span class="risk-badge <?= $riskClass ?>">
+                            <?= htmlspecialchars($lead['riskLevel'] ?? 'Moderate') ?>
+                          </span>
+                        </td>
+                        <td>
+                          <?php if (!empty($lead['pdfUrl'])): ?>
+                            <a href="<?= htmlspecialchars($lead['pdfUrl']) ?>" target="_blank" class="btn-pdf-link" title="Download or preview generated PDF report">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                              </svg>
+                              Download PDF
+                            </a>
+                          <?php else: ?>
+                            <span style="color: var(--text-muted); font-size: 12px;">Archived</span>
+                          <?php endif; ?>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            <?php endif; ?>
+          </div>
+
+        <!-- TAB 2: BLOCKED IPS & SECURITY -->
+        <?php elseif ($currentTab === 'security'): ?>
+          
+          <!-- Manual Block Form Card -->
+          <div class="table-card" style="padding: 20px; margin-bottom: 22px;">
+            <div style="margin-bottom: 14px;">
+              <h3 style="font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--color-danger);">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                </svg>
+                Manually Blacklist An IP Address (24-Hour Block)
+              </h3>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Enter an IP address below to immediately prevent it from requesting OTPs or submitting audit forms.
+              </p>
+            </div>
+
+            <form method="POST" action="admin.php?tab=security" style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <input type="hidden" name="action" value="manual_block">
+              <input 
+                type="text" 
+                name="ip" 
+                class="search-input" 
+                placeholder="e.g. 103.21.244.1" 
+                style="flex: 1; min-width: 220px;" 
+                required
+              >
+              <input 
+                type="text" 
+                name="reason" 
+                class="search-input" 
+                placeholder="Reason for blocking (e.g. Suspicious automated spam bot)" 
+                style="flex: 2; min-width: 280px;"
+              >
+              <button type="submit" class="btn btn-danger">
+                Blacklist IP (24 Hours)
+              </button>
+            </form>
+          </div>
+
+          <!-- Blocked IPs Table Card -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <div>
+                <div class="table-card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-danger);">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                  Blocked IP Addresses & Security Events
+                </div>
+                <div class="table-card-sub">Automatic triggers: Exceeding 3 submissions in 24 hours or OTP flooding</div>
+              </div>
+              <span class="record-count-badge">
+                <strong><?= $activeBlockedCount ?></strong> active blocks
+              </span>
+            </div>
+
+            <?php if (empty($blockedList)): ?>
+              <div class="empty-state">
+                <div class="empty-state-icon">🛡️</div>
+                <div class="empty-state-title">No Blocked IPs Currently</div>
+                <p>When an IP address exceeds the 3 submissions per day limit, it will automatically appear here with 1-click unblock capability.</p>
+              </div>
+            <?php else: ?>
+              <div style="overflow-x: auto;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Blocked IP Address</th>
+                      <th>Block Reason</th>
+                      <th>Attempts</th>
+                      <th>Blocked At (IST)</th>
+                      <th>Time Remaining</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($blockedList as $ip => $item): ?>
+                      <?php
+                        $isStillActive = !empty($item['active']) && $now < ($item['expires_at'] ?? 0);
+                        $hoursRemaining = $isStillActive ? ceil(($item['expires_at'] - $now) / 3600) : 0;
+                      ?>
+                      <tr>
+                        <td>
+                          <span class="ip-badge" style="color: #B91C1C; background: #FEE2E2; border-color: #FECACA; font-weight: 700;">
+                            <?= htmlspecialchars($ip) ?>
+                          </span>
+                        </td>
+                        <td><?= htmlspecialchars($item['reason'] ?? 'Exceeded rate limit') ?></td>
+                        <td style="font-family: var(--font-mono); font-weight: 700;">
+                          <?= (int)($item['attempts'] ?? 0) ?>
+                        </td>
+                        <td style="font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
+                          <?= date('M j, Y - H:i', $item['blocked_at'] ?? time()) ?>
+                        </td>
+                        <td>
+                          <?php if ($isStillActive): ?>
+                            <span style="color: var(--color-warning); font-weight: 700; font-size: 12.5px;">
+                              ~<?= $hoursRemaining ?> hr(s)
+                            </span>
+                          <?php else: ?>
+                            <span style="color: var(--text-muted); font-size: 12.5px;">Expired</span>
+                          <?php endif; ?>
+                        </td>
+                        <td>
+                          <?php if ($isStillActive): ?>
+                            <span class="status-badge status-blocked">Blocked</span>
+                          <?php else: ?>
+                            <span class="status-badge status-active">Released</span>
+                          <?php endif; ?>
+                        </td>
+                        <td>
+                          <a href="admin.php?action=unblock&ip=<?= urlencode($ip) ?>" 
+                             onclick="return confirm('Are you sure you want to unblock <?= htmlspecialchars($ip) ?> and reset its submission limit?')" 
+                             class="btn btn-unblock">
+                            Unblock & Reset
+                          </a>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            <?php endif; ?>
+          </div>
+
+        <!-- TAB 3: LIVE IP RATE LIMIT MONITOR -->
+        <?php elseif ($currentTab === 'traffic'): ?>
+          <div class="table-card">
+            <div class="table-card-header">
+              <div>
+                <div class="table-card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-purple);">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                  24-Hour Rolling IP Limit Tracker
+                </div>
+                <div class="table-card-sub">Global Rule: Each unique IP address is permitted up to 3 form submissions every 24 hours</div>
+              </div>
+              <span class="sys-pulse-badge">
+                <span class="pulse-dot"></span>
+                Live Monitoring
+              </span>
+            </div>
+
+            <?php if (empty($activeTrackers)): ?>
+              <div class="empty-state">
+                <div class="empty-state-icon">⚡</div>
+                <div class="empty-state-title">No Active Traffic Recorded In Last 24 Hours</div>
+                <p>As visitors interact with the audit tool, their submission quotas will update here live.</p>
+              </div>
+            <?php else: ?>
+              <div style="overflow-x: auto;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Client IP</th>
+                      <th>Submissions Used</th>
+                      <th>Quota Remaining</th>
+                      <th>First Submission (IST)</th>
+                      <th>Security Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($activeTrackers as $trk): ?>
+                      <?php
+                        $used = (int)($trk['count'] ?? 0);
+                        $rem = max(0, 3 - $used);
+                        $isBlocked = $used >= 3;
+                      ?>
+                      <tr>
+                        <td>
+                          <span class="ip-badge"><?= htmlspecialchars($trk['ip'] ?? 'Unknown') ?></span>
+                        </td>
+                        <td>
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-family: var(--font-mono); font-weight: 800; color: <?= $isBlocked ? '#DC2626' : ($used === 2 ? '#D97706' : '#059669') ?>">
+                              <?= $used ?> / 3
+                            </span>
+                            <div style="width: 70px; height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden;">
+                              <div style="width: <?= min(100, ($used / 3) * 100) ?>%; height: 100%; background: <?= $isBlocked ? '#DC2626' : ($used === 2 ? '#D97706' : '#10B981') ?>;"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style="font-family: var(--font-mono); font-size: 13px; font-weight: 600;">
+                          <?= $rem ?> remaining
+                        </td>
+                        <td style="font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
+                          <?= date('M j, Y - H:i', $trk['start'] ?? time()) ?>
+                        </td>
+                        <td>
+                          <?php if ($isBlocked): ?>
+                            <span class="status-badge status-blocked">Limit Exceeded</span>
+                          <?php else: ?>
+                            <span class="status-badge status-active">Allowed</span>
+                          <?php endif; ?>
+                        </td>
+                        <td>
+                          <?php if ($isBlocked): ?>
+                            <a href="admin.php?action=unblock&ip=<?= urlencode($trk['ip']) ?>" class="btn btn-unblock">
+                              Reset Limit
+                            </a>
+                          <?php else: ?>
+                            <span style="color: var(--text-muted); font-size: 12.5px;">Within Quota</span>
+                          <?php endif; ?>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            <?php endif; ?>
           </div>
         <?php endif; ?>
+
       </div>
-    <?php endif; ?>
+    </main>
 
   </div>
 
-  <!-- Real-Time Instant Search Script -->
+  <!-- Real-Time Instant Search & Mobile Toggle Scripts -->
   <script>
+    // Search Filter
     const searchInput = document.getElementById('lead-search');
     const table = document.getElementById('leads-table');
     if (searchInput && table) {
@@ -1649,6 +1846,21 @@ $currentTab = $_GET['tab'] ?? 'leads';
           const text = row.textContent.toLowerCase();
           row.style.display = text.includes(query) ? '' : 'none';
         });
+      });
+    }
+
+    // Mobile Sidebar Toggle
+    const mobileToggle = document.getElementById('mobile-toggle');
+    const sidebar = document.getElementById('admin-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (mobileToggle && sidebar && overlay) {
+      mobileToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+      });
+      overlay.addEventListener('click', function() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
       });
     }
   </script>
