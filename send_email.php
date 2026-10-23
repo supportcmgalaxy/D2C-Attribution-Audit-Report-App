@@ -56,11 +56,69 @@ try {
     define('FROM_NAME', trim((string)getenv('FROM_NAME')));
     define('ADMIN_EMAIL', trim((string)getenv('ADMIN_EMAIL')));
 
+    // Google reCAPTCHA v3 Configuration (Invisible)
+    define('RECAPTCHA_SITE_KEY', trim((string)getenv('RECAPTCHA_SITE_KEY')));
+    define('RECAPTCHA_SECRET_KEY', trim((string)getenv('RECAPTCHA_SECRET_KEY')));
+
     // Base URL of your site (no trailing slash) — used to build the public report link
     $isHttps = (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] == 1)) ||
                (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
     $scheme = $isHttps ? 'https' : 'http';
     define('SITE_URL', $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'd2c.cmgalaxy.com'));
+
+    // =========================================================================
+    // 1.3. PUBLIC CONFIG ENDPOINT (Provides frontend with reCAPTCHA site key)
+    // =========================================================================
+    if (isset($_GET['config'])) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'recaptchaSiteKey' => (defined('RECAPTCHA_SITE_KEY') && RECAPTCHA_SITE_KEY !== 'your_recaptcha_site_key_here') ? RECAPTCHA_SITE_KEY : ''
+        ]);
+        exit;
+    }
+
+    /**
+     * Verifies Google reCAPTCHA v3 token against Google API.
+     * Gracefully bypasses if keys are unconfigured / placeholder.
+     */
+    function verifyGoogleRecaptcha($token, $action = 'submit_lead') {
+        $secret = defined('RECAPTCHA_SECRET_KEY') ? RECAPTCHA_SECRET_KEY : '';
+        if (empty($secret) || $secret === 'your_recaptcha_secret_key_here') {
+            return ['success' => true, 'score' => 1.0, 'bypassed' => true];
+        }
+
+        if (empty($token)) {
+            return ['success' => false, 'error' => 'reCAPTCHA token missing. Please refresh and try again.'];
+        }
+
+        $url = 'https://www.google.com/recaptcha/api/siteverify';
+        $postData = http_build_query([
+            'secret'   => $secret,
+            'response' => $token,
+            'remoteip' => $_SERVER['REMOTE_ADDR'] ?? ''
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $resp = curl_exec($ch);
+        curl_close($ch);
+
+        $result = json_decode($resp, true);
+        if (!$result || empty($result['success'])) {
+            return ['success' => false, 'error' => 'reCAPTCHA security check failed.'];
+        }
+
+        $score = (float)($result['score'] ?? 0);
+        if ($score < 0.4) {
+            return ['success' => false, 'score' => $score, 'error' => 'Bot activity protection check failed. Please refresh.'];
+        }
+
+        return ['success' => true, 'score' => $score];
+    }
 
     // =========================================================================
     // 1.5. 1-CLICK TEST MODE (Browser me direct test: send_email.php?test=1)
@@ -132,6 +190,14 @@ try {
     // ACTION: SEND OTP
     // -------------------------------------------------------------------------
     if (isset($data['action']) && $data['action'] === 'send_otp') {
+        // Validate reCAPTCHA v3 token
+        $recaptchaToken = $data['recaptcha_token'] ?? $data['recaptchaToken'] ?? '';
+        $captchaCheck = verifyGoogleRecaptcha($recaptchaToken, 'send_otp');
+        if (!$captchaCheck['success']) {
+            echo json_encode(['success' => false, 'error' => $captchaCheck['error']]);
+            exit;
+        }
+
         $email = filter_var(trim($data['email'] ?? ''), FILTER_VALIDATE_EMAIL);
         if (!$email) {
             echo json_encode(['success' => false, 'error' => 'Please enter a valid work email address.']);
@@ -318,6 +384,14 @@ try {
             'success' => false,
             'error' => 'Valid user email is required.'
         ]);
+        exit;
+    }
+
+    // Validate reCAPTCHA v3 token on report generation
+    $recaptchaToken = $data['recaptcha_token'] ?? $data['recaptchaToken'] ?? '';
+    $captchaCheck = verifyGoogleRecaptcha($recaptchaToken, 'submit_lead');
+    if (!$captchaCheck['success']) {
+        echo json_encode(['success' => false, 'error' => $captchaCheck['error']]);
         exit;
     }
 

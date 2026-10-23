@@ -37,6 +37,47 @@ function getApiEndpoint() {
   return './send_email.php';
 }
 
+/**
+ * Generates an invisible Google reCAPTCHA v3 token.
+ * Gracefully returns empty string if unconfigured or bypassed.
+ */
+export async function getRecaptchaToken(action = 'submit_lead') {
+  try {
+    const siteKey = (typeof window !== 'undefined' && window.RECAPTCHA_SITE_KEY && window.RECAPTCHA_SITE_KEY !== 'your_recaptcha_site_key_here')
+      ? window.RECAPTCHA_SITE_KEY
+      : '';
+
+    if (!siteKey) return '';
+
+    if (typeof window.grecaptcha === 'undefined') {
+      await new Promise((resolve) => {
+        const s = document.createElement('script');
+        s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+        s.async = true;
+        s.defer = true;
+        s.onload = resolve;
+        s.onerror = () => resolve();
+        document.head.appendChild(s);
+      });
+    }
+
+    if (typeof window.grecaptcha === 'undefined') return '';
+
+    return await new Promise((resolve) => {
+      window.grecaptcha.ready(async () => {
+        try {
+          const token = await window.grecaptcha.execute(siteKey, { action });
+          resolve(token || '');
+        } catch (e) {
+          resolve('');
+        }
+      });
+    });
+  } catch (err) {
+    return '';
+  }
+}
+
 export const apiService = {
   /**
    * Initializes or restores an audit session.
@@ -241,6 +282,10 @@ export const apiService = {
       localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(existingLeads.slice(0, 20)));
     } catch (e) {}
 
+    // Attach reCAPTCHA v3 token to lead payload
+    const recaptchaToken = await getRecaptchaToken('submit_lead');
+    fullLeadRecord.recaptcha_token = recaptchaToken;
+
     // Dispatch email and Staging API sync in parallel
     await Promise.allSettled([
       this.sendReportEmail(leadData.email, fullLeadRecord),
@@ -259,6 +304,8 @@ export const apiService = {
    */
   async sendOtp(email, name = '') {
     const endpoint = getApiEndpoint();
+    const recaptchaToken = await getRecaptchaToken('send_otp');
+
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -268,7 +315,8 @@ export const apiService = {
         body: JSON.stringify({
           action: 'send_otp',
           email: email,
-          name: name
+          name: name,
+          recaptcha_token: recaptchaToken
         })
       });
       return await response.json();
