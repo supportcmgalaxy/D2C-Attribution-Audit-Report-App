@@ -11,7 +11,9 @@
  *   - Live Rate Limit Monitor (3 submissions/day per IP)
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Timezone: IST (UTC+5:30)
 date_default_timezone_set('Asia/Kolkata');
@@ -32,8 +34,12 @@ if (file_exists(__DIR__ . '/.env')) {
     }
 }
 
-// Configurable Admin Password (default: cmgalaxy@admin2026)
-define('ADMIN_PASSWORD', getenv('ADMIN_PANEL_PASS') ?: 'cmgalaxy@admin2026');
+// Admin Credentials read dynamically from .env (No hardcoding)
+$envAdminUser = getenv('ADMIN_PANEL_USER') ?: ($_ENV['ADMIN_PANEL_USER'] ?? '');
+$envAdminPass = getenv('ADMIN_PANEL_PASS') ?: ($_ENV['ADMIN_PANEL_PASS'] ?? '');
+
+define('ADMIN_USERNAME', $envAdminUser);
+define('ADMIN_PASSWORD', $envAdminPass);
 
 // Directories
 $reportsDir   = __DIR__ . '/reports';
@@ -45,6 +51,7 @@ $blockedJson  = $rateLimitDir . '/blocked_ips.json';
 // Handle Logout
 if (isset($_GET['logout'])) {
     unset($_SESSION['cmg_admin_logged']);
+    unset($_SESSION['cmg_admin_user']);
     session_destroy();
     header('Location: admin.php');
     exit;
@@ -52,14 +59,19 @@ if (isset($_GET['logout'])) {
 
 // Handle Login
 $loginError = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_login'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['admin_login'])) {
+    $enteredUser = trim($_POST['username'] ?? '');
     $enteredPass = trim($_POST['password'] ?? '');
-    if ($enteredPass === ADMIN_PASSWORD) {
+
+    if (empty(ADMIN_USERNAME) || empty(ADMIN_PASSWORD)) {
+        $loginError = 'Admin credentials are not configured in .env. Please configure ADMIN_PANEL_USER and ADMIN_PANEL_PASS.';
+    } elseif (hash_equals(ADMIN_USERNAME, $enteredUser) && hash_equals(ADMIN_PASSWORD, $enteredPass)) {
         $_SESSION['cmg_admin_logged'] = true;
+        $_SESSION['cmg_admin_user'] = $enteredUser;
         header('Location: admin.php');
         exit;
     } else {
-        $loginError = 'Invalid admin password. Please try again.';
+        $loginError = 'Invalid admin username or password. Please try again.';
     }
 }
 
@@ -230,24 +242,54 @@ $currentTab = $_GET['tab'] ?? 'leads';
   <!-- Favicon -->
   <link rel="icon" type="image/webp" href="assets/favicons.webp">
 
-  <!-- Google Fonts: Onest & JetBrains Mono -->
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --bg-dark: #0B0F19;
-      --bg-card: #111827;
-      --bg-card-hover: #1F2937;
-      --border-color: #1F293D;
-      --color-primary: #3A7DFF;
-      --color-primary-hover: #2563EB;
-      --color-success: #10B981;
-      --color-warning: #F59E0B;
-      --color-danger: #EF4444;
-      --text-main: #F3F4F6;
-      --text-muted: #9CA3AF;
-      --font-family: 'Onest', -apple-system, BlinkMacSystemFont, sans-serif;
+      --bg-body: #F8FAFC;
+      --bg-surface: #FFFFFF;
+      --bg-surface-hover: #F8FAFC;
+      --bg-subtle: #F1F5F9;
+      --border-color: #E2E8F0;
+      --border-darker: #CBD5E1;
+      
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-primary-light: #EFF6FF;
+      --color-primary-border: #BFDBFE;
+
+      --color-success: #059669;
+      --color-success-hover: #047857;
+      --color-success-light: #ECFDF5;
+      --color-success-border: #A7F3D0;
+
+      --color-danger: #DC2626;
+      --color-danger-hover: #B91C1C;
+      --color-danger-light: #FEF2F2;
+      --color-danger-border: #FECACA;
+
+      --color-warning: #D97706;
+      --color-warning-light: #FFFBEB;
+      --color-warning-border: #FDE68A;
+
+      --color-purple: #7C3AED;
+      --color-purple-light: #F5F3FF;
+      --color-purple-border: #DDD6FE;
+
+      --text-main: #0F172A;
+      --text-body: #334155;
+      --text-muted: #64748B;
+      --text-subtle: #94A3B8;
+
+      --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+      --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+
+      --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
 
@@ -259,77 +301,95 @@ $currentTab = $_GET['tab'] ?? 'leads';
 
     body {
       font-family: var(--font-family);
-      background-color: var(--bg-dark);
-      color: var(--text-main);
+      background-color: var(--bg-body);
+      color: var(--text-body);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       line-height: 1.5;
     }
 
-    /* Container */
-    .admin-container {
-      max-width: 1320px;
-      margin: 0 auto;
-      padding: 24px 20px 60px;
+    /* Top Navigation Bar */
+    .top-nav {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 0;
+      z-index: 50;
     }
 
-    /* Top Header */
-    .admin-header {
+    .top-nav-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 14px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 24px;
-      border-bottom: 1px solid var(--border-color);
-      margin-bottom: 28px;
       gap: 16px;
       flex-wrap: wrap;
     }
 
-    .brand-group {
+    .brand-section {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
 
     .brand-logo-img {
-      height: 30px;
+      height: 32px;
       width: auto;
       display: block;
     }
 
-    .admin-title-wrap {
+    .brand-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border-color);
+    }
+
+    .brand-title-wrap {
       display: flex;
       flex-direction: column;
     }
 
-    .admin-title {
-      font-size: 19px;
+    .brand-title {
+      font-size: 16px;
       font-weight: 800;
-      letter-spacing: -0.01em;
-      color: #FFFFFF;
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 8px;
+      letter-spacing: -0.01em;
     }
 
-    .admin-badge-role {
-      background: rgba(58, 125, 255, 0.15);
-      border: 1px solid rgba(58, 125, 255, 0.4);
-      color: #93C5FD;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 4px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .admin-subtext {
-      font-size: 13px;
+    .brand-subtitle {
+      font-size: 12px;
       color: var(--text-muted);
+      font-weight: 500;
     }
 
-    .header-actions {
+    .sys-pulse-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--color-success-light);
+      border: 1px solid var(--color-success-border);
+      color: var(--color-success);
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 9999px;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-success);
+      box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
+    }
+
+    /* Nav Actions */
+    .nav-actions {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -348,166 +408,295 @@ $currentTab = $_GET['tab'] ?? 'leads';
       border: 1px solid transparent;
       cursor: pointer;
       text-decoration: none;
-      transition: all 180ms ease;
+      transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
       white-space: nowrap;
     }
 
     .btn-excel {
-      background: #064E3B;
-      color: #A7F3D0;
-      border-color: #059669;
+      background: linear-gradient(180deg, #10B981 0%, #059669 100%);
+      color: #FFFFFF;
+      box-shadow: 0 1px 3px rgba(5, 150, 105, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      border: 1px solid #047857;
     }
     .btn-excel:hover {
       background: #047857;
       color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+      box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      border-color: var(--border-color);
+      color: var(--text-body);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+      border-color: var(--border-darker);
+      color: var(--text-main);
     }
 
     .btn-primary {
       background: var(--color-primary);
       color: #FFFFFF;
+      box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
     }
     .btn-primary:hover {
       background: var(--color-primary-hover);
-      box-shadow: 0 4px 14px rgba(58, 125, 255, 0.35);
-    }
-
-    .btn-outline {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: var(--border-color);
-      color: var(--text-main);
-    }
-    .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: #374151;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
     }
 
     .btn-danger {
-      background: rgba(239, 68, 68, 0.15);
-      border-color: rgba(239, 68, 68, 0.4);
-      color: #FCA5A5;
-      padding: 5px 10px;
-      font-size: 12px;
-    }
-    .btn-danger:hover {
       background: var(--color-danger);
       color: #FFFFFF;
     }
+    .btn-danger:hover {
+      background: var(--color-danger-hover);
+    }
 
     .btn-unblock {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: rgba(16, 185, 129, 0.4);
-      color: #6EE7B7;
+      background: var(--color-success-light);
+      border-color: var(--color-success-border);
+      color: var(--color-success);
       padding: 5px 12px;
       font-size: 12px;
+      font-weight: 700;
+      border-radius: 6px;
     }
     .btn-unblock:hover {
       background: var(--color-success);
       color: #FFFFFF;
+      border-color: var(--color-success);
+    }
+
+    /* Admin User Pill */
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      padding: 5px 12px 5px 6px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .user-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .user-role-tag {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--color-primary);
+      background: var(--color-primary-light);
+      padding: 1px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--color-danger);
+      font-weight: 600;
+      padding: 6px 12px;
+      font-size: 12.5px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 120ms ease;
+    }
+    .btn-logout:hover {
+      background: var(--color-danger-light);
+      border-color: var(--color-danger-border);
+    }
+
+    /* Main Container */
+    .admin-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    /* Page Header Info */
+    .page-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .page-title-wrap h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+
+    .page-title-wrap p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .time-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-sm);
     }
 
     /* KPI Grid */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
       margin-bottom: 30px;
     }
 
     .kpi-card {
-      background: var(--bg-card);
+      background: var(--bg-surface);
       border: 1px solid var(--border-color);
       border-radius: 12px;
       padding: 20px;
+      box-shadow: var(--shadow-card);
       position: relative;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 12px;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
     }
 
-    .kpi-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--color-primary), #60A5FA);
-    }
-    .kpi-card.kpi-warning::before {
-      background: linear-gradient(90deg, var(--color-warning), #FCD34D);
-    }
-    .kpi-card.kpi-danger::before {
-      background: linear-gradient(90deg, var(--color-danger), #F87171);
-    }
-    .kpi-card.kpi-success::before {
-      background: linear-gradient(90deg, var(--color-success), #34D399);
+    .kpi-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .kpi-label {
-      font-size: 12.5px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
     }
 
+    .kpi-icon-pill {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .kpi-blue .kpi-icon-pill { background: var(--color-primary-light); color: var(--color-primary); }
+    .kpi-green .kpi-icon-pill { background: var(--color-success-light); color: var(--color-success); }
+    .kpi-red .kpi-icon-pill { background: var(--color-danger-light); color: var(--color-danger); }
+    .kpi-purple .kpi-icon-pill { background: var(--color-purple-light); color: var(--color-purple); }
+
     .kpi-value {
-      font-size: 32px;
+      font-size: 34px;
       font-weight: 800;
-      color: #FFFFFF;
+      color: var(--text-main);
       font-family: var(--font-mono);
-      line-height: 1.1;
+      line-height: 1;
+      letter-spacing: -0.02em;
     }
 
     .kpi-footer {
-      font-size: 12px;
+      font-size: 12.5px;
       color: var(--text-muted);
-      margin-top: 4px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 10px;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* Tabs Bar */
-    .admin-tabs {
-      display: flex;
-      gap: 8px;
-      border-bottom: 1px solid var(--border-color);
-      margin-bottom: 24px;
+    /* Segmented Navigation Tabs */
+    .tabs-wrapper {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 4px;
+      display: inline-flex;
+      gap: 4px;
+      margin-bottom: 22px;
+      max-width: 100%;
       overflow-x: auto;
     }
 
     .tab-btn {
-      padding: 12px 18px;
-      background: none;
+      padding: 9px 18px;
+      background: transparent;
       border: none;
-      border-bottom: 2px solid transparent;
       color: var(--text-muted);
       font-family: var(--font-family);
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      transition: all 160ms ease;
+      border-radius: 7px;
+      transition: all 140ms ease;
+      white-space: nowrap;
     }
 
     .tab-btn:hover {
-      color: #FFFFFF;
+      color: var(--text-main);
     }
 
     .tab-btn.active {
-      color: #FFFFFF;
-      border-bottom-color: var(--color-primary);
+      background: var(--bg-surface);
+      color: var(--text-main);
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
     }
 
     .tab-counter {
-      background: rgba(255, 255, 255, 0.1);
-      padding: 2px 7px;
-      border-radius: 12px;
-      font-size: 11px;
+      background: var(--border-color);
+      color: var(--text-body);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 11.5px;
       font-weight: 700;
+      font-family: var(--font-mono);
+    }
+    .tab-btn.active .tab-counter {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
     }
 
     /* Controls Bar */
@@ -523,40 +712,78 @@ $currentTab = $_GET['tab'] ?? 'leads';
     .search-box-wrap {
       position: relative;
       flex: 1;
-      max-width: 380px;
+      max-width: 420px;
     }
 
     .search-input {
       width: 100%;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-darker);
       border-radius: 8px;
-      padding: 10px 14px 10px 38px;
+      padding: 10px 14px 10px 40px;
       color: var(--text-main);
       font-family: var(--font-family);
       font-size: 13.5px;
       outline: none;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
     }
     .search-input:focus {
       border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     }
 
     .search-icon {
       position: absolute;
-      left: 12px;
+      left: 14px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-muted);
       pointer-events: none;
     }
 
-    /* Table Container */
+    .record-count-badge {
+      font-size: 13px;
+      color: var(--text-muted);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 8px;
+    }
+
+    /* Table Card */
     .table-card {
-      background: var(--bg-card);
+      background: var(--bg-surface);
       border: 1px solid var(--border-color);
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      box-shadow: var(--shadow-card);
+    }
+
+    .table-card-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .table-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-card-sub {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
     }
 
     .data-table {
@@ -566,36 +793,41 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .data-table th {
-      background: #0E1424;
-      padding: 12px 16px;
+      background: #F8FAFC;
+      padding: 13px 18px;
       font-size: 11.5px;
       font-weight: 700;
-      color: var(--text-muted);
+      color: #475569;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       border-bottom: 1px solid var(--border-color);
     }
 
     .data-table td {
-      padding: 14px 16px;
+      padding: 14px 18px;
       font-size: 13.5px;
-      border-bottom: 1px solid rgba(31, 41, 61, 0.6);
-      color: #E2E8F0;
+      border-bottom: 1px solid #F1F5F9;
+      color: var(--text-body);
       vertical-align: middle;
     }
 
+    .data-table tbody tr {
+      transition: background-color 100ms ease;
+    }
     .data-table tbody tr:hover {
-      background: var(--bg-card-hover);
+      background: #F8FAFC;
     }
 
+    /* Badges */
     .ip-badge {
       font-family: var(--font-mono);
       font-size: 12px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 2px 7px;
-      border-radius: 4px;
-      color: #93C5FD;
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      padding: 3px 8px;
+      border-radius: 5px;
+      color: #1E293B;
+      font-weight: 600;
       display: inline-block;
     }
 
@@ -612,95 +844,146 @@ $currentTab = $_GET['tab'] ?? 'leads';
     }
 
     .status-blocked {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.4);
-      color: #F87171;
+      background: var(--color-danger-light);
+      border: 1px solid var(--color-danger-border);
+      color: var(--color-danger);
     }
 
     .status-active {
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      color: #34D399;
+      background: var(--color-success-light);
+      border: 1px solid var(--color-success-border);
+      color: var(--color-success);
     }
 
+    /* Risk Badges */
     .risk-badge {
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-block;
     }
-    .risk-low { background: #064E3B; color: #6EE7B7; }
-    .risk-moderate { background: #78350F; color: #FCD34D; }
-    .risk-high { background: #7F1D1D; color: #FCA5A5; }
-    .risk-critical { background: #881337; color: #FDA4AF; }
+    .risk-low { background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; }
+    .risk-moderate { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+    .risk-high { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+    .risk-critical { background: #FFE4E6; color: #9F1239; border: 1px solid #FDA4AF; }
 
+    /* PDF Link */
     .btn-pdf-link {
-      color: #38BDF8;
+      color: var(--color-primary);
       text-decoration: none;
-      font-weight: 600;
+      font-weight: 700;
       font-size: 12.5px;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      background: rgba(56, 189, 248, 0.1);
+      gap: 5px;
+      padding: 4px 10px;
+      background: var(--color-primary-light);
+      border: 1px solid var(--color-primary-border);
       border-radius: 6px;
-      transition: background 150ms ease;
+      transition: all 120ms ease;
     }
     .btn-pdf-link:hover {
-      background: rgba(56, 189, 248, 0.2);
-      text-decoration: underline;
+      background: var(--color-primary);
+      color: #FFFFFF;
+      border-color: var(--color-primary);
     }
 
+    /* Empty State */
     .empty-state {
-      padding: 48px 20px;
+      padding: 56px 20px;
       text-align: center;
       color: var(--text-muted);
+    }
+    .empty-state-icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+      opacity: 0.7;
     }
     .empty-state-title {
       font-size: 16px;
       font-weight: 700;
-      color: #E2E8F0;
+      color: var(--text-main);
       margin-bottom: 6px;
     }
 
-    /* Login Screen */
+    /* Success / Error Banners */
+    .alert-banner {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-success {
+      background: var(--color-success-light);
+      border: 1px solid var(--color-success-border);
+      color: #065F46;
+    }
+
+    .alert-error {
+      background: var(--color-danger-light);
+      border: 1px solid var(--color-danger-border);
+      color: #991B1B;
+    }
+
+    /* Light Theme Login Screen */
     .login-wrapper {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
+      background: linear-gradient(135deg, #F8FAFC 0%, #EEF2F6 100%);
     }
 
     .login-card {
       width: 100%;
-      max-width: 400px;
-      background: var(--bg-card);
+      max-width: 420px;
+      background: var(--bg-surface);
       border: 1px solid var(--border-color);
       border-radius: 16px;
-      padding: 36px 30px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      padding: 38px 32px;
+      box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
       text-align: center;
     }
 
     .login-logo {
-      height: 36px;
+      height: 38px;
       width: auto;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
+    }
+
+    .login-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-primary);
+      background: var(--color-primary-light);
+      padding: 3px 9px;
+      border-radius: 6px;
+      margin-bottom: 12px;
     }
 
     .login-title {
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 800;
-      color: #FFFFFF;
+      color: var(--text-main);
       margin-bottom: 6px;
+      letter-spacing: -0.01em;
     }
 
     .login-sub {
       font-size: 13.5px;
       color: var(--text-muted);
       margin-bottom: 24px;
+      line-height: 1.45;
     }
 
     .login-form {
@@ -712,48 +995,35 @@ $currentTab = $_GET['tab'] ?? 'leads';
 
     .form-group label {
       font-size: 13px;
-      font-weight: 600;
-      color: #D1D5DB;
+      font-weight: 700;
+      color: var(--text-main);
       margin-bottom: 6px;
       display: block;
     }
 
     .login-input {
       width: 100%;
-      background: #0E1424;
-      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-darker);
       border-radius: 8px;
-      padding: 12px 14px;
-      color: #FFFFFF;
+      padding: 11px 14px;
+      color: var(--text-main);
       font-family: var(--font-family);
       font-size: 14px;
       outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
     }
     .login-input:focus {
       border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     }
 
-    .error-banner {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.4);
-      color: #FCA5A5;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-bottom: 16px;
-    }
-
-    .success-banner {
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      color: #6EE7B7;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .login-card-footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      padding-top: 16px;
     }
   </style>
 </head>
@@ -761,22 +1031,49 @@ $currentTab = $_GET['tab'] ?? 'leads';
 
 <?php if (!$isAuthenticated): ?>
   <!-- =========================================================================
-       LOGIN SCREEN
+       EXECUTIVE LIGHT-MODE LOGIN SCREEN
        ========================================================================= -->
   <div class="login-wrapper">
     <div class="login-card">
-      <img src="assets/cmgalaxy-logo.png" alt="CMGalaxy Logo" class="login-logo">
-      <h1 class="login-title">Admin Console</h1>
-      <p class="login-sub">D2C Attribution Audit Security & Leads Monitor</p>
+      <a href="https://www.cmgalaxy.com/" target="_blank" rel="noopener noreferrer">
+        <img src="assets/cmgalaxy-logo.png" alt="CMGalaxy Logo" class="login-logo">
+      </a>
+      
+      <div>
+        <span class="login-badge">Restricted Management Area</span>
+      </div>
+      <h1 class="login-title">Executive Admin Portal</h1>
+      <p class="login-sub">Sign in with your admin credentials to access live D2C attribution leads, security logs, and rate limit controls.</p>
 
       <?php if (!empty($loginError)): ?>
-        <div class="error-banner">
-          <?= htmlspecialchars($loginError) ?>
+        <div class="alert-banner alert-error" style="text-align: left;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <div><?= htmlspecialchars($loginError) ?></div>
         </div>
       <?php endif; ?>
 
       <form method="POST" action="admin.php" class="login-form">
         <input type="hidden" name="admin_login" value="1">
+        
+        <div class="form-group">
+          <label for="username">Admin Username / ID</label>
+          <input 
+            type="text" 
+            id="username" 
+            name="username" 
+            class="login-input" 
+            placeholder="e.g. admin" 
+            autocomplete="username"
+            value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
+            required
+            autofocus
+          >
+        </div>
+
         <div class="form-group">
           <label for="password">Admin Password</label>
           <input 
@@ -784,128 +1081,256 @@ $currentTab = $_GET['tab'] ?? 'leads';
             id="password" 
             name="password" 
             class="login-input" 
-            placeholder="Enter password..." 
+            placeholder="••••••••••••" 
             autocomplete="current-password"
             required
-            autofocus
           >
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 6px; font-size: 14px;">
           Unlock Admin Console →
         </button>
       </form>
+
+      <div class="login-card-footer">
+        CMGalaxy D2C Attribution Audit • Enterprise Edition
+      </div>
     </div>
   </div>
 
 <?php else: ?>
   <!-- =========================================================================
-       AUTHENTICATED ADMIN CONSOLE
+       AUTHENTICATED EXECUTIVE LIGHT DASHBOARD
        ========================================================================= -->
-  <div class="admin-container">
-    
-    <!-- Top Header -->
-    <header class="admin-header">
-      <div class="brand-group">
+  
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="top-nav-inner">
+      <div class="brand-section">
         <a href="https://www.cmgalaxy.com/" target="_blank" rel="noopener noreferrer">
           <img src="assets/cmgalaxy-logo.png" alt="CMGalaxy Logo" class="brand-logo-img">
         </a>
-        <div class="admin-title-wrap">
-          <div class="admin-title">
-            D2C Attribution Audit Console
-            <span class="admin-badge-role">Admin</span>
+        <div class="brand-divider"></div>
+        <div class="brand-title-wrap">
+          <div class="brand-title">
+            D2C Attribution Intelligence
+            <span class="sys-pulse-badge">
+              <span class="pulse-dot"></span>
+              Live Protected
+            </span>
           </div>
-          <div class="admin-subtext">Live Lead Captures, Rate Limiting & Security Dashboard</div>
+          <div class="brand-subtitle">Executive Lead Captures & IP Rate Limit Security Portal</div>
         </div>
       </div>
 
-      <div class="header-actions">
-        <!-- 1-Click Excel Download -->
-        <a href="admin.php?action=export_excel" class="btn btn-excel" title="Download all leads in Microsoft Excel compatible CSV">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <div class="nav-actions">
+        <!-- 1-Click Excel Export Button -->
+        <a href="admin.php?action=export_excel" class="btn btn-excel" title="Download all form leads in Microsoft Excel (.csv) format">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          Download Excel Sheet
+          Export Excel Sheet
         </a>
 
-        <!-- View App -->
-        <a href="index.html" target="_blank" class="btn btn-outline" title="Open live public application">
-          Open App ↗
+        <!-- Open Live Public App -->
+        <a href="index.html" target="_blank" class="btn btn-secondary" title="Preview public audit tool">
+          Public App ↗
         </a>
+
+        <!-- Admin Profile Pill -->
+        <div class="user-pill" title="Currently authenticated admin">
+          <div class="user-avatar">
+            <?= strtoupper(substr($_SESSION['cmg_admin_user'] ?? 'A', 0, 1)) ?>
+          </div>
+          <span><?= htmlspecialchars($_SESSION['cmg_admin_user'] ?? 'Admin') ?></span>
+          <span class="user-role-tag">Super Admin</span>
+        </div>
 
         <!-- Logout -->
-        <a href="admin.php?logout=1" class="btn btn-outline" style="color: #F87171;" title="Sign out from console">
+        <a href="admin.php?logout=1" class="btn-logout" title="Sign out from console">
           Logout
         </a>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'unblocked'): ?>
-      <div class="success-banner">
-        <span>✓</span> IP address has been successfully unblocked and its rate limit counters have been reset.
-      </div>
-    <?php elseif (isset($_GET['msg']) && $_GET['msg'] === 'blocked'): ?>
-      <div class="success-banner">
-        <span>✓</span> IP address has been successfully blocked for 24 hours.
-      </div>
-    <?php endif; ?>
+  <!-- Main Content Container -->
+  <div class="admin-container">
 
-    <!-- KPI Metric Cards -->
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-label">Total Leads Captured</div>
-        <div class="kpi-value"><?= count($leadsList) ?></div>
-        <div class="kpi-footer">All-time form submissions</div>
+    <!-- Page Title & Live Clock -->
+    <div class="page-title-row">
+      <div class="page-title-wrap">
+        <h1>Overview & Security Console</h1>
+        <p>Monitor real-time audit conversions, manage blocked spam IPs, and track 24-hour rate limit compliance.</p>
       </div>
-
-      <div class="kpi-card kpi-success">
-        <div class="kpi-label">Today's Form Submissions</div>
-        <div class="kpi-value"><?= $todayLeadsCount ?></div>
-        <div class="kpi-footer">Completed within last 24 hours</div>
-      </div>
-
-      <div class="kpi-card <?= $activeBlockedCount > 0 ? 'kpi-danger' : '' ?>">
-        <div class="kpi-label">Blocked Spam IPs</div>
-        <div class="kpi-value"><?= $activeBlockedCount ?></div>
-        <div class="kpi-footer">Exceeded 3 submissions/day limit</div>
-      </div>
-
-      <div class="kpi-card kpi-warning">
-        <div class="kpi-label">Active Monitored IPs</div>
-        <div class="kpi-value"><?= count($activeTrackers) ?></div>
-        <div class="kpi-footer">IPs tracked in 24h rolling window</div>
+      <div class="time-indicator">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span>IST: <?= date('M j, Y • h:i A') ?></span>
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="admin-tabs">
+    <!-- Feedback Alerts -->
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'unblocked'): ?>
+      <div class="alert-banner alert-success">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <div>IP address has been unblocked successfully, and its rate limit counters have been reset.</div>
+      </div>
+    <?php elseif (isset($_GET['msg']) && $_GET['msg'] === 'blocked'): ?>
+      <div class="alert-banner alert-error">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+        </svg>
+        <div>IP address has been manually blocked from form submissions for 24 hours.</div>
+      </div>
+    <?php endif; ?>
+
+    <!-- KPI Metric Cards Grid -->
+    <div class="kpi-grid">
+      
+      <!-- Card 1: Total Leads -->
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Total Leads Captured</span>
+          <div class="kpi-icon-pill">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value"><?= count($leadsList) ?></div>
+        <div class="kpi-footer">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          All-time verified audit submissions
+        </div>
+      </div>
+
+      <!-- Card 2: Today's Submissions -->
+      <div class="kpi-card kpi-green">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Today's Form Submissions</span>
+          <div class="kpi-icon-pill">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color: var(--color-success);"><?= $todayLeadsCount ?></div>
+        <div class="kpi-footer">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Past 24 hours rolling window
+        </div>
+      </div>
+
+      <!-- Card 3: Blocked Spam IPs -->
+      <div class="kpi-card kpi-red">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Blocked Spam IPs</span>
+          <div class="kpi-icon-pill">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <line x1="9.5" y1="9" x2="14.5" y2="14"></line>
+              <line x1="14.5" y1="9" x2="9.5" y2="14"></line>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color: <?= $activeBlockedCount > 0 ? 'var(--color-danger)' : 'var(--text-main)' ?>;">
+          <?= $activeBlockedCount ?>
+        </div>
+        <div class="kpi-footer">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          Exceeded 3 forms/day limit
+        </div>
+      </div>
+
+      <!-- Card 4: Active Monitored IPs -->
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Active Monitored IPs</span>
+          <div class="kpi-icon-pill">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M2 12h20"></path>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color: var(--color-purple);"><?= count($activeTrackers) ?></div>
+        <div class="kpi-footer">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+          </svg>
+          Unique visitors submitting today
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Segmented Navigation Tabs -->
+    <div class="tabs-wrapper">
       <a href="admin.php?tab=leads" class="tab-btn <?= $currentTab === 'leads' ? 'active' : '' ?>">
-        📋 Form Submissions (Leads)
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        Form Submissions (Leads)
         <span class="tab-counter"><?= count($leadsList) ?></span>
       </a>
+      
       <a href="admin.php?tab=security" class="tab-btn <?= $currentTab === 'security' ? 'active' : '' ?>">
-        🛡️ Blocked IPs & Security Log
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        Blocked IPs & Security Log
         <span class="tab-counter"><?= $activeBlockedCount ?></span>
       </a>
+
       <a href="admin.php?tab=traffic" class="tab-btn <?= $currentTab === 'traffic' ? 'active' : '' ?>">
-        📊 Live IP Rate Limit Monitor
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+        Live 24h Rate Limit Monitor
         <span class="tab-counter"><?= count($activeTrackers) ?></span>
       </a>
     </div>
 
-    <!-- TAB 1: LEADS SUBMISSIONS -->
+    <!-- TAB 1: FORM SUBMISSIONS (LEADS) -->
     <?php if ($currentTab === 'leads'): ?>
       <div class="table-controls">
         <div class="search-box-wrap">
-          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
           <input type="text" id="lead-search" class="search-input" placeholder="Search by name, email, company, IP...">
         </div>
 
-        <div style="font-size: 13px; color: var(--text-muted);">
+        <div class="record-count-badge">
           Showing <strong><?= count($leadsList) ?></strong> recorded submissions
         </div>
       </div>
@@ -913,8 +1338,9 @@ $currentTab = $_GET['tab'] ?? 'leads';
       <div class="table-card">
         <?php if (empty($leadsList)): ?>
           <div class="empty-state">
-            <div class="empty-state-title">No form submissions recorded yet</div>
-            <p>When users submit the lead capture form, their details and generated PDF reports will show up here.</p>
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">No Form Submissions Yet</div>
+            <p>When visitors complete the lead capture form, their details and generated PDF audit reports will show up here in real time.</p>
           </div>
         <?php else: ?>
           <div style="overflow-x: auto;">
@@ -923,12 +1349,12 @@ $currentTab = $_GET['tab'] ?? 'leads';
                 <tr>
                   <th>Date & Time (IST)</th>
                   <th>Full Name</th>
-                  <th>Company</th>
+                  <th>Company / Brand</th>
                   <th>Work Email</th>
                   <th>Phone Number</th>
                   <th>Client IP</th>
-                  <th>Risk Level</th>
-                  <th>Report PDF</th>
+                  <th>Audit Risk Level</th>
+                  <th>PDF Report</th>
                 </tr>
               </thead>
               <tbody>
@@ -941,19 +1367,25 @@ $currentTab = $_GET['tab'] ?? 'leads';
                     elseif (str_contains($risk, 'high')) $riskClass = 'risk-high';
                   ?>
                   <tr>
-                    <td style="white-space: nowrap; font-size: 12.5px; color: var(--text-muted);">
+                    <td style="white-space: nowrap; font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
                       <?= htmlspecialchars($lead['date'] ?? 'N/A') ?>
                     </td>
                     <td>
-                      <strong style="color: #FFFFFF;"><?= htmlspecialchars($lead['fullName'] ?? 'N/A') ?></strong>
+                      <strong style="color: var(--text-main); font-weight: 700;">
+                        <?= htmlspecialchars($lead['fullName'] ?? 'N/A') ?>
+                      </strong>
                     </td>
-                    <td><?= htmlspecialchars($lead['company'] ?? 'N/A') ?></td>
                     <td>
-                      <a href="mailto:<?= htmlspecialchars($lead['email'] ?? '') ?>" style="color: #93C5FD; text-decoration: none;">
+                      <span style="font-weight: 600; color: #1E293B;">
+                        <?= htmlspecialchars($lead['company'] ?? 'N/A') ?>
+                      </span>
+                    </td>
+                    <td>
+                      <a href="mailto:<?= htmlspecialchars($lead['email'] ?? '') ?>" style="color: var(--color-primary); text-decoration: none; font-weight: 500;">
                         <?= htmlspecialchars($lead['email'] ?? 'N/A') ?>
                       </a>
                     </td>
-                    <td style="font-family: var(--font-mono); font-size: 12.5px;">
+                    <td style="font-family: var(--font-mono); font-size: 12.5px; color: var(--text-main);">
                       <?= htmlspecialchars($lead['phone'] ?? 'N/A') ?>
                     </td>
                     <td>
@@ -966,15 +1398,15 @@ $currentTab = $_GET['tab'] ?? 'leads';
                     </td>
                     <td>
                       <?php if (!empty($lead['pdfUrl'])): ?>
-                        <a href="<?= htmlspecialchars($lead['pdfUrl']) ?>" target="_blank" class="btn-pdf-link" title="Open generated PDF report">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <a href="<?= htmlspecialchars($lead['pdfUrl']) ?>" target="_blank" class="btn-pdf-link" title="Download or preview generated PDF report">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                           </svg>
-                          PDF
+                          Download PDF
                         </a>
                       <?php else: ?>
-                        <span style="color: var(--text-muted); font-size: 12px;">Saved</span>
+                        <span style="color: var(--text-muted); font-size: 12px;">Archived</span>
                       <?php endif; ?>
                     </td>
                   </tr>
@@ -988,30 +1420,66 @@ $currentTab = $_GET['tab'] ?? 'leads';
     <!-- TAB 2: BLOCKED IPS & SECURITY -->
     <?php elseif ($currentTab === 'security'): ?>
       
-      <!-- Manual Block Form -->
-      <div class="table-card" style="padding: 20px; margin-bottom: 24px;">
-        <h3 style="font-size: 15px; font-weight: 700; color: #FFFFFF; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-          </svg>
-          Manually Block An IP Address
-        </h3>
+      <!-- Manual Block Form Card -->
+      <div class="table-card" style="padding: 22px; margin-bottom: 24px;">
+        <div style="margin-bottom: 14px;">
+          <h3 style="font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--color-danger);">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+            </svg>
+            Manually Blacklist An IP Address (24-Hour Block)
+          </h3>
+          <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+            Enter an IP address below to immediately prevent it from requesting OTPs or submitting audit forms.
+          </p>
+        </div>
+
         <form method="POST" action="admin.php?tab=security" style="display: flex; gap: 12px; flex-wrap: wrap;">
           <input type="hidden" name="action" value="manual_block">
-          <input type="text" name="ip" class="search-input" placeholder="e.g. 192.168.1.10" style="flex: 1; min-width: 200px;" required>
-          <input type="text" name="reason" class="search-input" placeholder="Reason for blocking (e.g. Malicious spam)" style="flex: 2; min-width: 250px;">
-          <button type="submit" class="btn btn-primary" style="background: var(--color-danger);">
-            Block IP (24h)
+          <input 
+            type="text" 
+            name="ip" 
+            class="search-input" 
+            placeholder="e.g. 103.21.244.1" 
+            style="flex: 1; min-width: 220px;" 
+            required
+          >
+          <input 
+            type="text" 
+            name="reason" 
+            class="search-input" 
+            placeholder="Reason for blocking (e.g. Suspicious automated spam bot)" 
+            style="flex: 2; min-width: 280px;"
+          >
+          <button type="submit" class="btn btn-danger">
+            Blacklist IP (24 Hours)
           </button>
         </form>
       </div>
 
+      <!-- Blocked IPs Table Card -->
       <div class="table-card">
+        <div class="table-card-header">
+          <div>
+            <div class="table-card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-danger);">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+              Blocked IP Addresses & Security Events
+            </div>
+            <div class="table-card-sub">Automatic triggers: Exceeding 3 submissions in 24 hours or OTP flooding</div>
+          </div>
+          <span class="record-count-badge">
+            <strong><?= $activeBlockedCount ?></strong> active blocks
+          </span>
+        </div>
+
         <?php if (empty($blockedList)): ?>
           <div class="empty-state">
-            <div class="empty-state-title">No IPs currently blocked</div>
-            <p>When an IP exceeds 3 form submissions in 24 hours or spams OTPs, it will automatically appear here.</p>
+            <div class="empty-state-icon">🛡️</div>
+            <div class="empty-state-title">No Blocked IPs Currently</div>
+            <p>When an IP address exceeds the 3 submissions per day limit, it will automatically appear here with 1-click unblock capability.</p>
           </div>
         <?php else: ?>
           <div style="overflow-x: auto;">
@@ -1022,7 +1490,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
                   <th>Block Reason</th>
                   <th>Attempts</th>
                   <th>Blocked At (IST)</th>
-                  <th>Expires In</th>
+                  <th>Time Remaining</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -1035,16 +1503,22 @@ $currentTab = $_GET['tab'] ?? 'leads';
                   ?>
                   <tr>
                     <td>
-                      <span class="ip-badge" style="color: #F87171; font-weight: 700;"><?= htmlspecialchars($ip) ?></span>
+                      <span class="ip-badge" style="color: #B91C1C; background: #FEE2E2; border-color: #FECACA; font-weight: 700;">
+                        <?= htmlspecialchars($ip) ?>
+                      </span>
                     </td>
                     <td><?= htmlspecialchars($item['reason'] ?? 'Exceeded rate limit') ?></td>
-                    <td style="font-family: var(--font-mono);"><?= (int)($item['attempts'] ?? 0) ?></td>
-                    <td style="font-size: 12.5px; color: var(--text-muted);">
+                    <td style="font-family: var(--font-mono); font-weight: 700;">
+                      <?= (int)($item['attempts'] ?? 0) ?>
+                    </td>
+                    <td style="font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
                       <?= date('M j, Y - H:i', $item['blocked_at'] ?? time()) ?>
                     </td>
                     <td>
                       <?php if ($isStillActive): ?>
-                        <span style="color: #FCD34D; font-weight: 600; font-size: 12.5px;">~<?= $hoursRemaining ?> hr(s)</span>
+                        <span style="color: var(--color-warning); font-weight: 700; font-size: 12.5px;">
+                          ~<?= $hoursRemaining ?> hr(s)
+                        </span>
                       <?php else: ?>
                         <span style="color: var(--text-muted); font-size: 12.5px;">Expired</span>
                       <?php endif; ?>
@@ -1058,9 +1532,9 @@ $currentTab = $_GET['tab'] ?? 'leads';
                     </td>
                     <td>
                       <a href="admin.php?action=unblock&ip=<?= urlencode($ip) ?>" 
-                         onclick="return confirm('Are you sure you want to unblock <?= htmlspecialchars($ip) ?>?')" 
+                         onclick="return confirm('Are you sure you want to unblock <?= htmlspecialchars($ip) ?> and reset its submission limit?')" 
                          class="btn btn-unblock">
-                        Unblock IP
+                        Unblock & Reset
                       </a>
                     </td>
                   </tr>
@@ -1074,18 +1548,27 @@ $currentTab = $_GET['tab'] ?? 'leads';
     <!-- TAB 3: LIVE IP RATE LIMIT MONITOR -->
     <?php elseif ($currentTab === 'traffic'): ?>
       <div class="table-card">
-        <div style="padding: 18px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <div class="table-card-header">
           <div>
-            <h3 style="font-size: 15px; font-weight: 700; color: #FFFFFF;">24-Hour Active Rate Limit Tracker</h3>
-            <p style="font-size: 12.5px; color: var(--text-muted);">Rule: Max 3 form submissions allowed per IP in a rolling 24-hour window.</p>
+            <div class="table-card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-purple);">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+              24-Hour Rolling IP Limit Tracker
+            </div>
+            <div class="table-card-sub">Global Rule: Each unique IP address is permitted up to 3 form submissions every 24 hours</div>
           </div>
-          <span style="font-size: 12px; color: #34D399; font-weight: 600;">● Active Tracking</span>
+          <span class="sys-pulse-badge">
+            <span class="pulse-dot"></span>
+            Live Monitoring
+          </span>
         </div>
 
         <?php if (empty($activeTrackers)): ?>
           <div class="empty-state">
-            <div class="empty-state-title">No IP traffic tracked in the last 24 hours</div>
-            <p>As visitors submit forms, their IP activity counter will display here live.</p>
+            <div class="empty-state-icon">⚡</div>
+            <div class="empty-state-title">No Active Traffic Recorded In Last 24 Hours</div>
+            <p>As visitors interact with the audit tool, their submission quotas will update here live.</p>
           </div>
         <?php else: ?>
           <div style="overflow-x: auto;">
@@ -1094,9 +1577,9 @@ $currentTab = $_GET['tab'] ?? 'leads';
                 <tr>
                   <th>Client IP</th>
                   <th>Submissions Used</th>
-                  <th>Remaining Today</th>
+                  <th>Quota Remaining</th>
                   <th>First Submission (IST)</th>
-                  <th>Status</th>
+                  <th>Security Status</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -1108,21 +1591,28 @@ $currentTab = $_GET['tab'] ?? 'leads';
                     $isBlocked = $used >= 3;
                   ?>
                   <tr>
-                    <td><span class="ip-badge"><?= htmlspecialchars($trk['ip'] ?? 'Unknown') ?></span></td>
-                    <td style="font-family: var(--font-mono); font-weight: 700;">
-                      <span style="color: <?= $isBlocked ? '#EF4444' : ($used === 2 ? '#F59E0B' : '#10B981') ?>">
-                        <?= $used ?> / 3
-                      </span>
+                    <td>
+                      <span class="ip-badge"><?= htmlspecialchars($trk['ip'] ?? 'Unknown') ?></span>
                     </td>
-                    <td style="font-family: var(--font-mono); font-size: 12.5px;">
-                      <?= $rem ?> left
+                    <td>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-family: var(--font-mono); font-weight: 800; color: <?= $isBlocked ? '#DC2626' : ($used === 2 ? '#D97706' : '#059669') ?>">
+                          <?= $used ?> / 3
+                        </span>
+                        <div style="width: 70px; height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden;">
+                          <div style="width: <?= min(100, ($used / 3) * 100) ?>%; height: 100%; background: <?= $isBlocked ? '#DC2626' : ($used === 2 ? '#D97706' : '#10B981') ?>;"></div>
+                        </div>
+                      </div>
                     </td>
-                    <td style="font-size: 12.5px; color: var(--text-muted);">
+                    <td style="font-family: var(--font-mono); font-size: 13px; font-weight: 600;">
+                      <?= $rem ?> remaining
+                    </td>
+                    <td style="font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
                       <?= date('M j, Y - H:i', $trk['start'] ?? time()) ?>
                     </td>
                     <td>
                       <?php if ($isBlocked): ?>
-                        <span class="status-badge status-blocked">Limit Reached</span>
+                        <span class="status-badge status-blocked">Limit Exceeded</span>
                       <?php else: ?>
                         <span class="status-badge status-active">Allowed</span>
                       <?php endif; ?>
@@ -1133,7 +1623,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
                           Reset Limit
                         </a>
                       <?php else: ?>
-                        <span style="color: var(--text-muted); font-size: 12px;">Active</span>
+                        <span style="color: var(--text-muted); font-size: 12.5px;">Within Quota</span>
                       <?php endif; ?>
                     </td>
                   </tr>
