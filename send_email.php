@@ -122,6 +122,163 @@ try {
     }
 
     // =========================================================================
+    // 1.4. CLIENT IP DETECTION & RATE LIMITING SYSTEM (3 per day limit)
+    // =========================================================================
+    function getClientIp() {
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            return trim($parts[0]);
+        }
+        return trim($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+    }
+
+    /**
+     * Checks if IP has exceeded the daily form submission limit (3 per 24 hours).
+     * If limit exceeded, automatically records IP into blocked_ips.json.
+     */
+    function checkSubmissionRateLimit($ip) {
+        $dir = __DIR__ . '/reports/.ratelimits';
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+
+        $now = time();
+        $windowSeconds = 86400; // 24 hours (1 day)
+        $maxAllowed = 3;
+
+        // Check if IP is already in blocked list
+        $blockedFile = $dir . '/blocked_ips.json';
+        $blockedList = file_exists($blockedFile) ? json_decode(@file_get_contents($blockedFile), true) : [];
+        if (!is_array($blockedList)) $blockedList = [];
+
+        if (isset($blockedList[$ip])) {
+            $item = $blockedList[$ip];
+            if (!empty($item['active']) && $now < ($item['expires_at'] ?? 0)) {
+                $hoursLeft = ceil(($item['expires_at'] - $now) / 3600);
+                return [
+                    'allowed' => false,
+                    'blocked' => true,
+                    'error' => "Daily submission limit reached (3 per day). Your IP ({$ip}) is blocked. Please try again in {$hoursLeft} hour(s)."
+                ];
+            }
+        }
+
+        $ipFile = $dir . '/submit_' . md5($ip) . '.json';
+        $record = file_exists($ipFile) ? json_decode(@file_get_contents($ipFile), true) : null;
+
+        if (!$record || ($now - ($record['start'] ?? 0)) > $windowSeconds) {
+            $record = [
+                'ip' => $ip,
+                'count' => 1,
+                'start' => $now,
+                'submissions' => [$now]
+            ];
+        } else {
+            $record['count'] = ($record['count'] ?? 0) + 1;
+            $record['submissions'][] = $now;
+        }
+
+        file_put_contents($ipFile, json_encode($record, JSON_PRETTY_PRINT));
+
+        if ($record['count'] > $maxAllowed) {
+            $blockedList[$ip] = [
+                'ip' => $ip,
+                'reason' => "Exceeded daily form submission limit ({$maxAllowed} forms / 24 hours)",
+                'attempts' => $record['count'],
+                'blocked_at' => $now,
+                'expires_at' => $now + $windowSeconds,
+                'active' => true
+            ];
+            file_put_contents($blockedFile, json_encode($blockedList, JSON_PRETTY_PRINT));
+
+            return [
+                'allowed' => false,
+                'blocked' => true,
+                'error' => "Submission limit reached (maximum {$maxAllowed} reports per day from one IP). Your IP has been temporarily blocked for 24 hours."
+            ];
+        }
+
+        return [
+            'allowed' => true,
+            'count' => $record['count'],
+            'remaining' => $maxAllowed - $record['count']
+        ];
+    }
+
+    /**
+     * Checks if IP is spamming OTP requests (Max 10 OTP requests per 24 hours).
+     */
+    function checkOtpRateLimit($ip) {
+        $dir = __DIR__ . '/reports/.ratelimits';
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+
+        $now = time();
+        $windowSeconds = 86400; // 24 hours
+        $maxAllowed = 10;
+
+        $blockedFile = $dir . '/blocked_ips.json';
+        $blockedList = file_exists($blockedFile) ? json_decode(@file_get_contents($blockedFile), true) : [];
+        if (!is_array($blockedList)) $blockedList = [];
+
+        if (isset($blockedList[$ip]) && !empty($blockedList[$ip]['active']) && $now < ($blockedList[$ip]['expires_at'] ?? 0)) {
+            $hoursLeft = ceil(($blockedList[$ip]['expires_at'] - $now) / 3600);
+            return [
+                'allowed' => false,
+                'error' => "Your IP is blocked. Please try again in {$hoursLeft} hour(s)."
+            ];
+        }
+
+        $ipFile = $dir . '/otp_' . md5($ip) . '.json';
+        $record = file_exists($ipFile) ? json_decode(@file_get_contents($ipFile), true) : null;
+
+        if (!$record || ($now - ($record['start'] ?? 0)) > $windowSeconds) {
+            $record = ['ip' => $ip, 'count' => 1, 'start' => $now];
+        } else {
+            $record['count'] = ($record['count'] ?? 0) + 1;
+        }
+
+        file_put_contents($ipFile, json_encode($record));
+
+        if ($record['count'] > $maxAllowed) {
+            $blockedList[$ip] = [
+                'ip' => $ip,
+                'reason' => "Excessive OTP requests ({$record['count']} requests / 24 hours)",
+                'attempts' => $record['count'],
+                'blocked_at' => $now,
+                'expires_at' => $now + $windowSeconds,
+                'active' => true
+            ];
+            file_put_contents($blockedFile, json_encode($blockedList, JSON_PRETTY_PRINT));
+
+            return [
+                'allowed' => false,
+                'error' => "Too many OTP verification requests from your IP. Please try again tomorrow."
+            ];
+        }
+
+        return ['allowed' => true];
+    }
+
+    /**
+     * Appends lead record to reports/leads_log.json for Admin Dashboard.
+     */
+    function logLeadToJson($lead) {
+        $reportsDir = __DIR__ . '/reports';
+        if (!is_dir($reportsDir)) @mkdir($reportsDir, 0755, true);
+        $file = $reportsDir . '/leads_log.json';
+
+        $leads = file_exists($file) ? json_decode(@file_get_contents($file), true) : [];
+        if (!is_array($leads)) $leads = [];
+
+        array_unshift($leads, $lead); // Newest first
+        if (count($leads) > 2000) {
+            $leads = array_slice($leads, 0, 2000);
+        }
+        file_put_contents($file, json_encode($leads, JSON_PRETTY_PRINT));
+    }
+
+    // =========================================================================
     // 1.5. 1-CLICK TEST MODE (Browser me direct test: send_email.php?test=1)
     // =========================================================================
     if (isset($_GET['test'])) {
@@ -191,6 +348,14 @@ try {
     // ACTION: SEND OTP
     // -------------------------------------------------------------------------
     if (isset($data['action']) && ($data['action'] === 'send_otp' || $data['action'] === 'sendotp')) {
+        // Rate limit OTP requests by client IP (Max 10 per 24 hours)
+        $clientIp = getClientIp();
+        $ipOtpCheck = checkOtpRateLimit($clientIp);
+        if (!$ipOtpCheck['allowed']) {
+            echo json_encode(['success' => false, 'error' => $ipOtpCheck['error']]);
+            exit;
+        }
+
         // Validate reCAPTCHA v3 token
         $recaptchaToken = $data['recaptcha_token'] ?? $data['recaptchaToken'] ?? '';
         $captchaCheck = verifyGoogleRecaptcha($recaptchaToken, 'sendotp');
@@ -417,6 +582,19 @@ try {
     }
 
     // =========================================================================
+    // 2.2. IP RATE LIMIT: MAXIMUM 3 SUBMISSIONS PER IP PER 24 HOURS
+    // =========================================================================
+    $clientIp = getClientIp();
+    $rateLimitCheck = checkSubmissionRateLimit($clientIp);
+    if (!$rateLimitCheck['allowed']) {
+        echo json_encode([
+            'success' => false,
+            'error' => $rateLimitCheck['error']
+        ]);
+        exit;
+    }
+
+    // =========================================================================
     // 2.5. SAVE PDF REPORT TO /reports/ FOLDER
     // =========================================================================
     // Filename: {name}-{YYYY-MM-DD}-{HHmmss}.pdf
@@ -478,6 +656,26 @@ try {
         ]);
         fclose($csvFp);
         $csvRecorded = true;
+
+        // Also record to reports/leads_log.json for the Admin Dashboard
+        logLeadToJson([
+            'id'               => $auditId,
+            'timestamp'        => time(),
+            'date'             => $submissionDate,
+            'firstName'        => $firstName,
+            'lastName'         => $lastName,
+            'fullName'         => $userName,
+            'email'            => $userEmail,
+            'phone'            => $userPhone,
+            'company'          => $userCompany,
+            'ip'               => $clientIp,
+            'pdfUrl'           => $reportPublicUrl,
+            'pdfFilename'      => $reportFileName,
+            'riskLevel'        => $analysisData['strategicRiskLevel'] ?? 'Moderate',
+            'reliableCount'    => $analysisData['reliableCount'] ?? 0,
+            'gapsCount'        => $analysisData['attributionGapCount'] ?? 0,
+            'investigateCount' => $analysisData['investigateCount'] ?? 0
+        ]);
     }
 
 

@@ -300,14 +300,16 @@
 
 .form-input {
   width: 100%;
+  height: 46px;
   font-family: inherit;
   font-size: 15px;
-  padding: 12px 16px;
+  padding: 10px 16px;
   border-radius: var(--rounded-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-on-surface);
   outline: none;
+  box-sizing: border-box;
   transition: border-color var(--transition-fast);
 }
 
@@ -391,7 +393,7 @@
   gap: 6px;
   height: 32px;
   padding: 0 13px;
-  background: var(--color-primary, #0F172A);
+  background: #3a7dff;
   border: 1px solid transparent;
   color: #FFFFFF;
   border-radius: var(--rounded-md, 7px);
@@ -402,14 +404,14 @@
   cursor: pointer;
   white-space: nowrap;
   transition: all 180ms ease;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 2px 6px rgba(58, 125, 255, 0.28);
   z-index: 2;
 }
 
 .btn-email-verify:hover:not(:disabled) {
-  background: var(--color-tertiary, #2563EB);
+  background: #2563eb;
   color: #FFFFFF;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 4px 10px rgba(58, 125, 255, 0.38);
 }
 
 .btn-email-verify:disabled {
@@ -516,17 +518,19 @@
 
 .otp-digit-input {
   flex: 1;
+  height: 46px;
   font-family: var(--font-mono, monospace);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 6px;
   text-align: center;
-  padding: 10px 14px;
+  padding: 0 14px;
   background: #FFFFFF;
-  border: 1.5px solid #CBD5E1;
+  border: 1px solid var(--color-border);
   border-radius: var(--rounded-md);
   color: var(--color-primary);
   outline: none;
+  box-sizing: border-box;
   transition: all 180ms ease;
 }
 
@@ -541,7 +545,8 @@
 }
 
 .btn-submit-otp {
-  padding: 10px 20px;
+  height: 46px;
+  padding: 0 22px;
   font-size: 13.5px;
   font-weight: 600;
   white-space: nowrap;
@@ -553,6 +558,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   transition: background 180ms ease;
 }
 
