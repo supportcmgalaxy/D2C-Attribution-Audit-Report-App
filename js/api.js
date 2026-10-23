@@ -37,16 +37,33 @@ function getApiEndpoint() {
   return './send_email.php';
 }
 
+let cachedSiteKey = null;
+
+async function getSiteKey() {
+  if (cachedSiteKey !== null) return cachedSiteKey;
+  if (typeof window !== 'undefined' && window.RECAPTCHA_SITE_KEY && window.RECAPTCHA_SITE_KEY !== 'your_recaptcha_site_key_here') {
+    cachedSiteKey = window.RECAPTCHA_SITE_KEY;
+    return cachedSiteKey;
+  }
+  try {
+    const endpoint = getApiEndpoint();
+    const configUrl = endpoint.includes('?') ? `${endpoint}&config=1` : `${endpoint}?config=1`;
+    const res = await fetch(configUrl);
+    const data = await res.json();
+    cachedSiteKey = data.recaptchaSiteKey || '';
+  } catch (e) {
+    cachedSiteKey = '';
+  }
+  return cachedSiteKey;
+}
+
 /**
  * Generates an invisible Google reCAPTCHA v3 token.
  * Gracefully returns empty string if unconfigured or bypassed.
  */
 export async function getRecaptchaToken(action = 'submit_lead') {
   try {
-    const siteKey = (typeof window !== 'undefined' && window.RECAPTCHA_SITE_KEY && window.RECAPTCHA_SITE_KEY !== 'your_recaptcha_site_key_here')
-      ? window.RECAPTCHA_SITE_KEY
-      : '';
-
+    const siteKey = await getSiteKey();
     if (!siteKey) return '';
 
     if (typeof window.grecaptcha === 'undefined') {
