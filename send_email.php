@@ -9,6 +9,10 @@ require_once __DIR__ . '/lib/SimplePDF.php';
 error_reporting(0);
 ini_set('display_errors', '0');
 
+// Ensure execution continues even if user closes or refreshes the window/tab
+ignore_user_abort(true);
+set_time_limit(60);
+
 // Timezone: India Standard Time (IST, UTC+5:30)
 date_default_timezone_set('Asia/Kolkata');
 
@@ -106,12 +110,182 @@ try {
     }
 
     // =========================================================================
-    // 2. INPUT DATA PROCESSING
+    // 2. INPUT DATA PROCESSING & OTP ACTIONS
     // =========================================================================
     $rawInput = file_get_contents('php://input');
     $data = json_decode($rawInput, true);
 
-    if (!$data || !isset($data['lead'])) {
+    if (!$data) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Invalid or empty JSON request.'
+        ]);
+        exit;
+    }
+
+    $otpDir = __DIR__ . '/reports/.otps';
+    if (!is_dir($otpDir)) {
+        @mkdir($otpDir, 0755, true);
+    }
+
+    // -------------------------------------------------------------------------
+    // ACTION: SEND OTP
+    // -------------------------------------------------------------------------
+    if (isset($data['action']) && $data['action'] === 'send_otp') {
+        $email = filter_var(trim($data['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+        if (!$email) {
+            echo json_encode(['success' => false, 'error' => 'Please enter a valid work email address.']);
+            exit;
+        }
+
+        $emailClean = strtolower($email);
+        $emailHash = md5($emailClean);
+        $otpFile = $otpDir . '/' . $emailHash . '.json';
+
+        // Rate limit: 20 seconds between code requests
+        if (file_exists($otpFile)) {
+            $existing = json_decode(@file_get_contents($otpFile), true);
+            if ($existing && isset($existing['created']) && (time() - $existing['created']) < 20) {
+                $waitSec = 20 - (time() - $existing['created']);
+                echo json_encode([
+                    'success' => false,
+                    'error' => "Please wait {$waitSec}s before requesting a new code."
+                ]);
+                exit;
+            }
+        }
+
+        // Generate 6-digit OTP
+        $otp = (string)random_int(100000, 999999);
+        $name = htmlspecialchars(trim($data['name'] ?? 'There'));
+        if ($name === '') $name = 'There';
+
+        $otpRecord = [
+            'email' => $emailClean,
+            'otp' => password_hash($otp, PASSWORD_DEFAULT),
+            'created' => time(),
+            'expires' => time() + 600, // 10 minutes
+            'verified' => false,
+            'attempts' => 0
+        ];
+        file_put_contents($otpFile, json_encode($otpRecord));
+
+        // Send OTP Email via SMTP
+        $logoUrl = SITE_URL . '/assets/cmgalaxy-logo.png';
+        $subject = "Your CMGalaxy Verification Code: {$otp}";
+        $body = "
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset='UTF-8'></head>
+        <body style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;'>
+          <div style='max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;'>
+            <div style='background: #0f172a; padding: 24px; color: #ffffff;'>
+              <h2 style='margin: 0; font-size: 20px; font-weight: 700; color: #ffffff !important;'>Email Verification</h2>
+              <p style='margin: 4px 0 0 0; color: #94a3b8 !important; font-size: 14px;'>CMGalaxy D2C Attribution Audit</p>
+            </div>
+            <div style='padding: 32px 24px; text-align: center;'>
+              <p style='font-size: 15px; color: #334155; margin: 0 0 16px 0; text-align: left;'>Hi <strong>{$name}</strong>,</p>
+              <p style='font-size: 15px; color: #334155; line-height: 1.6; margin: 0 0 20px 0; text-align: left;'>
+                Please use the 6-digit verification code below to confirm your work email and unlock your personalised D2C Attribution Audit Report:
+              </p>
+              
+              <div style='background: #f1f5f9; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 18px 24px; margin: 24px auto; display: inline-block;'>
+                <span style='font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #0f172a;'>{$otp}</span>
+              </div>
+              
+              <p style='font-size: 13px; color: #64748b; margin: 16px 0 0 0; line-height: 1.5;'>
+                This code is valid for <strong>10 minutes</strong>. If you did not request this audit report, please disregard this email.
+              </p>
+
+              <div style='margin-top: 28px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: left;'>
+                <p style='font-size: 13px; color: #334155; margin: 0 0 10px 0;'>Best regards,<br><strong>CMGalaxy Team</strong></p>
+                <a href='https://www.cmgalaxy.com/' target='_blank' rel='noopener noreferrer' style='text-decoration: none;'>
+                  <img src='{$logoUrl}' alt='CMGalaxy' style='height: 26px; width: auto; max-width: 130px; display: block; border: 0;' />
+                </a>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>";
+
+        $mailRes = sendSmtpMail($email, $subject, $body);
+
+        if ($mailRes['success']) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Verification code sent to ' . htmlspecialchars($email)
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Could not send verification email. Please check your address or try again.'
+            ]);
+        }
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // ACTION: VERIFY OTP
+    // -------------------------------------------------------------------------
+    if (isset($data['action']) && $data['action'] === 'verify_otp') {
+        $email = filter_var(trim($data['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+        $otpInput = trim((string)($data['otp'] ?? ''));
+
+        if (!$email || strlen($otpInput) !== 6) {
+            echo json_encode(['success' => false, 'error' => 'Please enter the 6-digit verification code.']);
+            exit;
+        }
+
+        $emailClean = strtolower($email);
+        $emailHash = md5($emailClean);
+        $otpFile = $otpDir . '/' . $emailHash . '.json';
+
+        if (!file_exists($otpFile)) {
+            echo json_encode(['success' => false, 'error' => 'No active verification code found. Please request a new code.']);
+            exit;
+        }
+
+        $record = json_decode(@file_get_contents($otpFile), true);
+        if (!$record || time() > ($record['expires'] ?? 0)) {
+            @unlink($otpFile);
+            echo json_encode(['success' => false, 'error' => 'Verification code has expired. Please request a new code.']);
+            exit;
+        }
+
+        if (($record['attempts'] ?? 0) >= 5) {
+            @unlink($otpFile);
+            echo json_encode(['success' => false, 'error' => 'Too many failed attempts. Please request a new code.']);
+            exit;
+        }
+
+        if (!password_verify($otpInput, $record['otp'])) {
+            $record['attempts'] = ($record['attempts'] ?? 0) + 1;
+            file_put_contents($otpFile, json_encode($record));
+            $remaining = 5 - $record['attempts'];
+            echo json_encode([
+                'success' => false,
+                'error' => "Incorrect verification code. ({$remaining} attempts remaining)"
+            ]);
+            exit;
+        }
+
+        // Verified successfully!
+        $record['verified'] = true;
+        $record['verified_at'] = time();
+        file_put_contents($otpFile, json_encode($record));
+
+        echo json_encode([
+            'success' => true,
+            'verified' => true,
+            'message' => 'Email verified successfully!'
+        ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // LEAD CAPTURE & REPORT DISPATCH
+    // -------------------------------------------------------------------------
+    if (!isset($data['lead'])) {
         echo json_encode([
             'success' => false,
             'error' => 'Invalid lead data received or empty request.'
@@ -143,6 +317,26 @@ try {
         echo json_encode([
             'success' => false,
             'error' => 'Valid user email is required.'
+        ]);
+        exit;
+    }
+
+    // Verify that the email was verified before generating the report
+    $emailClean = strtolower($userEmail);
+    $emailHash = md5($emailClean);
+    $otpFile = $otpDir . '/' . $emailHash . '.json';
+    $isVerified = false;
+    if (file_exists($otpFile)) {
+        $record = json_decode(@file_get_contents($otpFile), true);
+        if ($record && !empty($record['verified'])) {
+            $isVerified = true;
+        }
+    }
+
+    if (!$isVerified) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Email verification required before generating the report.'
         ]);
         exit;
     }

@@ -243,6 +243,52 @@ export const apiService = {
   },
 
   /**
+   * Dispatches 6-digit OTP verification email to user work email.
+   */
+  async sendOtp(email, name = '') {
+    try {
+      const response = await fetch('./send_email.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'send_otp',
+          email: email,
+          name: name
+        }),
+        keepalive: true
+      });
+      return await response.json();
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error sending code' };
+    }
+  },
+
+  /**
+   * Validates 6-digit OTP code against server.
+   */
+  async verifyOtp(email, otp) {
+    try {
+      const response = await fetch('./send_email.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'verify_otp',
+          email: email,
+          otp: otp
+        }),
+        keepalive: true
+      });
+      return await response.json();
+    } catch (err) {
+      return { success: false, error: err.message || 'Network error verifying code' };
+    }
+  },
+
+  /**
    * Dispatches transactional report email to User & Admin via SMTP.
    */
   async sendReportEmail(email, reportData) {
@@ -252,7 +298,8 @@ export const apiService = {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(reportData)
+        body: JSON.stringify(reportData),
+        keepalive: true
       });
       const text = await response.text();
       let result = null;
@@ -282,7 +329,8 @@ export const apiService = {
           'Content-Type': 'application/json',
           'X-API-Key': API_KEY
         },
-        body: JSON.stringify(leadRecord)
+        body: JSON.stringify(leadRecord),
+        keepalive: true
       });
       const data = await response.json();
       return { success: response.ok, data };

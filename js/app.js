@@ -82,6 +82,33 @@ class CMGalaxyAuditApp {
     this.consultationModal = document.getElementById('consultation-modal');
     this.btnCloseModal = document.getElementById('btn-close-modal');
     this.btnConfirmConsult = document.getElementById('btn-confirm-consultation');
+
+    // Report Progress Modal Elements
+    this.reportProgressModal = document.getElementById('report-progress-modal');
+    this.progressPercentVal = document.getElementById('progress-percent-val');
+    this.progressStatusText = document.getElementById('progress-status-text');
+    this.progressBarFill = document.getElementById('progress-bar-fill');
+    this.progStep1 = document.getElementById('prog-step-1');
+    this.progStep2 = document.getElementById('prog-step-2');
+    this.progStep3 = document.getElementById('prog-step-3');
+    this.progStep4 = document.getElementById('prog-step-4');
+
+    // Inline Email Verification & OTP Elements
+    this.isEmailVerified = false;
+    this.verifiedEmail = '';
+    this.resendCountdownInterval = null;
+    this.pendingReportSubmission = false;
+
+    this.emailVerifiedPill = document.getElementById('email-verified-pill');
+    this.btnTriggerOtp = document.getElementById('btn-trigger-otp');
+    this.inlineOtpCard = document.getElementById('inline-otp-card');
+    this.otpTargetEmail = document.getElementById('otp-target-email');
+    this.inputOtpCode = document.getElementById('input-otp-code');
+    this.btnSubmitOtp = document.getElementById('btn-submit-otp');
+    this.otpStatusMsg = document.getElementById('otp-status-msg');
+    this.btnResendOtp = document.getElementById('btn-resend-otp');
+    this.resendCountdown = document.getElementById('resend-countdown');
+    this.btnChangeEmail = document.getElementById('btn-change-email');
   }
 
   async init() {
@@ -346,6 +373,56 @@ class CMGalaxyAuditApp {
         this.closeConsultationModal();
       });
     }
+
+    // Inline OTP Verification handlers
+    if (this.btnTriggerOtp) {
+      this.btnTriggerOtp.addEventListener('click', () => {
+        if (this.isEmailVerified) return;
+        this.requestOtp();
+      });
+    }
+
+    if (this.inputEmail) {
+      this.inputEmail.addEventListener('input', () => {
+        // If email was modified after verification, reset verified state
+        if (this.isEmailVerified && this.inputEmail.value.trim().toLowerCase() !== this.verifiedEmail.toLowerCase()) {
+          this.resetEmailVerification();
+        }
+      });
+    }
+
+    if (this.btnSubmitOtp) {
+      this.btnSubmitOtp.addEventListener('click', () => this.verifyOtpCode());
+    }
+
+    if (this.inputOtpCode) {
+      this.inputOtpCode.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+        if (e.target.value.length === 6) {
+          this.verifyOtpCode();
+        }
+      });
+      this.inputOtpCode.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.verifyOtpCode();
+        }
+      });
+    }
+
+    if (this.btnResendOtp) {
+      this.btnResendOtp.addEventListener('click', () => this.requestOtp(true));
+    }
+
+    if (this.btnChangeEmail) {
+      this.btnChangeEmail.addEventListener('click', () => {
+        if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
+        if (this.inputEmail) {
+          this.inputEmail.focus();
+          this.inputEmail.select();
+        }
+      });
+    }
   }
 
   switchView(viewName) {
@@ -562,6 +639,14 @@ class CMGalaxyAuditApp {
       this.showInputError(this.inputLastName, 'error-lastname', false);
     }
 
+    // Validate Company
+    if (!company) {
+      this.showInputError(this.inputCompany, 'error-company', true);
+      hasError = true;
+    } else {
+      this.showInputError(this.inputCompany, 'error-company', false);
+    }
+
     // Validate Phone Number (must have between 7 and 15 digits)
     const phoneDigits = phone.replace(/\D/g, '');
     if (!phone || phoneDigits.length < 7 || phoneDigits.length > 15) {
@@ -580,17 +665,200 @@ class CMGalaxyAuditApp {
       this.showInputError(this.inputEmail, 'error-email', false);
     }
 
-    // Validate Company
-    if (!company) {
-      this.showInputError(this.inputCompany, 'error-company', true);
-      hasError = true;
-    } else {
-      this.showInputError(this.inputCompany, 'error-company', false);
-    }
-
     if (hasError) return;
 
-    // Loading state
+    // Check if email has been verified
+    if (!this.isEmailVerified || this.verifiedEmail.toLowerCase() !== email.toLowerCase()) {
+      this.pendingReportSubmission = true;
+      this.requestOtp();
+      if (this.inlineOtpCard) {
+        this.inlineOtpCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      if (this.otpStatusMsg) {
+        this.otpStatusMsg.className = 'otp-status-msg';
+        this.otpStatusMsg.textContent = 'Please enter the 6-digit verification code to continue.';
+      }
+      return;
+    }
+
+    this.executeLeadSubmission();
+  }
+
+  resetEmailVerification() {
+    this.isEmailVerified = false;
+    this.verifiedEmail = '';
+    if (this.emailVerifiedPill) this.emailVerifiedPill.style.display = 'none';
+    if (this.btnTriggerOtp) {
+      this.btnTriggerOtp.classList.remove('is-verified');
+      const text = this.btnTriggerOtp.querySelector('.otp-btn-text');
+      if (text) text.textContent = 'Verify Email';
+      this.btnTriggerOtp.disabled = false;
+    }
+    if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
+  }
+
+  async requestOtp(isResend = false) {
+    const email = this.inputEmail ? this.inputEmail.value.trim() : '';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!email || !emailRegex.test(email)) {
+      this.showInputError(this.inputEmail, 'error-email', true);
+      if (this.inputEmail) this.inputEmail.focus();
+      return;
+    }
+    this.showInputError(this.inputEmail, 'error-email', false);
+
+    const targetBtn = isResend ? this.btnResendOtp : this.btnTriggerOtp;
+    if (targetBtn) targetBtn.disabled = true;
+
+    const spinner = targetBtn ? targetBtn.querySelector('.spinner, .otp-spinner') : null;
+    const textEl = targetBtn ? targetBtn.querySelector('.otp-btn-text') : null;
+    if (spinner) spinner.style.display = 'inline-block';
+    if (textEl && !isResend) textEl.textContent = 'Sending...';
+
+    if (this.otpStatusMsg) {
+      this.otpStatusMsg.className = 'otp-status-msg';
+      this.otpStatusMsg.textContent = 'Sending 6-digit verification code...';
+    }
+
+    if (this.otpTargetEmail) this.otpTargetEmail.textContent = email;
+    if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'flex';
+
+    const firstName = this.inputFirstName ? this.inputFirstName.value.trim() : '';
+    const lastName = this.inputLastName ? this.inputLastName.value.trim() : '';
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    try {
+      const res = await apiService.sendOtp(email, fullName);
+      if (res && res.success) {
+        if (this.otpStatusMsg) {
+          this.otpStatusMsg.className = 'otp-status-msg success';
+          this.otpStatusMsg.textContent = '✓ Verification code sent to your email!';
+        }
+        if (this.inputOtpCode) {
+          this.inputOtpCode.value = '';
+          this.inputOtpCode.focus();
+        }
+        this.startResendTimer();
+      } else {
+        if (this.otpStatusMsg) {
+          this.otpStatusMsg.className = 'otp-status-msg error';
+          this.otpStatusMsg.textContent = (res && res.error) || 'Failed to send code. Please try again.';
+        }
+      }
+    } catch (err) {
+      if (this.otpStatusMsg) {
+        this.otpStatusMsg.className = 'otp-status-msg error';
+        this.otpStatusMsg.textContent = 'Network error. Please try again.';
+      }
+    } finally {
+      if (spinner) spinner.style.display = 'none';
+      if (textEl && !isResend) textEl.textContent = 'Verify Email';
+      if (targetBtn && !isResend) targetBtn.disabled = false;
+    }
+  }
+
+  startResendTimer() {
+    if (this.resendCountdownInterval) clearInterval(this.resendCountdownInterval);
+    if (!this.btnResendOtp || !this.resendCountdown) return;
+
+    this.btnResendOtp.disabled = true;
+    let secLeft = 30;
+    this.resendCountdown.textContent = `(${secLeft}s)`;
+    this.resendCountdown.style.display = 'inline';
+
+    this.resendCountdownInterval = setInterval(() => {
+      secLeft -= 1;
+      if (secLeft <= 0) {
+        clearInterval(this.resendCountdownInterval);
+        this.btnResendOtp.disabled = false;
+        this.resendCountdown.textContent = '';
+        this.resendCountdown.style.display = 'none';
+      } else {
+        this.resendCountdown.textContent = `(${secLeft}s)`;
+      }
+    }, 1000);
+  }
+
+  async verifyOtpCode() {
+    const email = this.inputEmail ? this.inputEmail.value.trim() : '';
+    const code = this.inputOtpCode ? this.inputOtpCode.value.trim() : '';
+
+    if (!code || code.length !== 6) {
+      if (this.otpStatusMsg) {
+        this.otpStatusMsg.className = 'otp-status-msg error';
+        this.otpStatusMsg.textContent = 'Please enter the complete 6-digit code.';
+      }
+      if (this.inputOtpCode) this.inputOtpCode.classList.add('has-error');
+      return;
+    }
+
+    if (this.inputOtpCode) this.inputOtpCode.classList.remove('has-error');
+    if (this.btnSubmitOtp) this.btnSubmitOtp.disabled = true;
+    const spinner = this.btnSubmitOtp ? this.btnSubmitOtp.querySelector('.spinner') : null;
+    const btnText = this.btnSubmitOtp ? this.btnSubmitOtp.querySelector('.btn-text') : null;
+    if (spinner) spinner.style.display = 'inline-block';
+    if (btnText) btnText.textContent = 'Verifying...';
+
+    try {
+      const res = await apiService.verifyOtp(email, code);
+      if (res && res.success) {
+        this.isEmailVerified = true;
+        this.verifiedEmail = email;
+
+        if (this.otpStatusMsg) {
+          this.otpStatusMsg.className = 'otp-status-msg success';
+          this.otpStatusMsg.textContent = '✓ Email verified successfully!';
+        }
+
+        if (this.emailVerifiedPill) this.emailVerifiedPill.style.display = 'inline-flex';
+        if (this.btnTriggerOtp) {
+          this.btnTriggerOtp.classList.add('is-verified');
+          const t = this.btnTriggerOtp.querySelector('.otp-btn-text');
+          if (t) t.textContent = '✓ Verified';
+          this.btnTriggerOtp.disabled = true;
+        }
+
+        setTimeout(() => {
+          if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
+
+          // If user previously clicked "Show My Attribution Report", continue automatically!
+          if (this.pendingReportSubmission) {
+            this.pendingReportSubmission = false;
+            this.executeLeadSubmission();
+          }
+        }, 400);
+
+      } else {
+        if (this.otpStatusMsg) {
+          this.otpStatusMsg.className = 'otp-status-msg error';
+          this.otpStatusMsg.textContent = (res && res.error) || 'Incorrect code. Please check your email.';
+        }
+        if (this.inputOtpCode) {
+          this.inputOtpCode.classList.add('has-error');
+          this.inputOtpCode.focus();
+        }
+      }
+    } catch (err) {
+      if (this.otpStatusMsg) {
+        this.otpStatusMsg.className = 'otp-status-msg error';
+        this.otpStatusMsg.textContent = 'Network error verifying code.';
+      }
+    } finally {
+      if (this.btnSubmitOtp) this.btnSubmitOtp.disabled = false;
+      if (spinner) spinner.style.display = 'none';
+      if (btnText) btnText.textContent = 'Confirm';
+    }
+  }
+
+  async executeLeadSubmission() {
+    const firstName = this.inputFirstName ? this.inputFirstName.value.trim() : '';
+    const lastName = this.inputLastName ? this.inputLastName.value.trim() : '';
+    const company = this.inputCompany ? this.inputCompany.value.trim() : '';
+    const phone = this.inputPhone ? this.inputPhone.value.trim() : '';
+    const email = this.inputEmail ? this.inputEmail.value.trim() : '';
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    // Loading state on main submit button
     this.btnSubmitLead.disabled = true;
     const btnText = this.btnSubmitLead.querySelector('.btn-text');
     const spinner = this.btnSubmitLead.querySelector('.spinner');
@@ -602,8 +870,28 @@ class CMGalaxyAuditApp {
       hasPhone: Boolean(phone)
     });
 
+    // Identify visitor in HubSpot CRM immediately so lead is captured right away
+    if (typeof window !== 'undefined') {
+      window._hsq = window._hsq || [];
+      const hubspotIdentifyPayload = {
+        email: email,
+        firstname: firstName,
+        lastname: lastName,
+        phone: phone,
+        company: company,
+        hs_lead_status: "NEW",
+        lead_type: "raw",
+        is_enriched: false,
+        lifecyclestage: "subscriber"
+      };
+
+      window._hsq.push(["identify", hubspotIdentifyPayload]);
+      window._hsq.push(["trackPageView"]);
+    }
+
     try {
-      const res = await apiService.createLead({
+      // 1. Initiate backend lead processing in background
+      const leadPromise = apiService.createLead({
         firstName: firstName,
         lastName: lastName,
         name: fullName,
@@ -612,40 +900,25 @@ class CMGalaxyAuditApp {
         company: company
       });
 
+      // 2. Run progress modal with animated milestones up to 100%
+      const res = await this.runProgressWithTask(leadPromise);
+
       this.activeAnalysis = res.analysis;
       this.activeSession = apiService.getSessionFromStorage();
 
-      // Identify visitor in HubSpot CRM
-      if (typeof window !== 'undefined') {
-        window._hsq = window._hsq || [];
-        const hubspotIdentifyPayload = {
-          email: email,
-          firstname: firstName,
-          lastname: lastName,
-          phone: phone,
-          company: company,
-          hs_lead_status: "NEW",
-          lead_type: "raw",
-          is_enriched: false,
-          lifecyclestage: "subscriber"
-        };
-
-        window._hsq.push(["identify", hubspotIdentifyPayload]);
-        // Trigger pageview so HubSpot immediately transmits the identify payload over HTTP
-        window._hsq.push(["trackPageView"]);
-      }
-
       trackEvent('report_viewed', {
-        sessionId: this.activeSession.id
+        sessionId: this.activeSession?.id
       });
 
       // Clear session from storage so next attempt starts completely fresh!
       apiService.resetAudit();
       if (this.leadForm) this.leadForm.reset();
+      this.resetEmailVerification();
 
       // Reveal personalized report immediately!
       this.showReport(true);
     } catch (err) {
+      this.closeProgressModal();
       alert("We couldn't generate your report right now. Your answers are saved. Please try again.");
     } finally {
       this.btnSubmitLead.disabled = false;
@@ -653,6 +926,120 @@ class CMGalaxyAuditApp {
       if (spinner) spinner.style.display = 'none';
       this.updateCRMInspector();
     }
+  }
+
+  showProgressModal() {
+    if (!this.reportProgressModal) return;
+    this.updateProgress(0, 'Initializing attribution analysis engine...', 1);
+    this.reportProgressModal.classList.add('open');
+    this.reportProgressModal.setAttribute('aria-hidden', 'false');
+  }
+
+  closeProgressModal() {
+    if (!this.reportProgressModal) return;
+    this.reportProgressModal.classList.remove('open');
+    this.reportProgressModal.setAttribute('aria-hidden', 'true');
+  }
+
+  updateProgress(percent, statusText, currentStep) {
+    const rounded = Math.min(100, Math.max(0, Math.round(percent)));
+    if (this.progressPercentVal) {
+      this.progressPercentVal.textContent = `${rounded}%`;
+    }
+    if (this.progressBarFill) {
+      this.progressBarFill.style.width = `${rounded}%`;
+      const track = this.progressBarFill.parentElement;
+      if (track) track.setAttribute('aria-valuenow', rounded);
+    }
+    if (statusText && this.progressStatusText) {
+      this.progressStatusText.textContent = statusText;
+    }
+
+    const steps = [this.progStep1, this.progStep2, this.progStep3, this.progStep4];
+    steps.forEach((stepEl, idx) => {
+      if (!stepEl) return;
+      const stepNum = idx + 1;
+      if (rounded >= 100 || currentStep > stepNum) {
+        stepEl.className = 'progress-step-item completed';
+      } else if (currentStep === stepNum) {
+        stepEl.className = 'progress-step-item active';
+      } else {
+        stepEl.className = 'progress-step-item pending';
+      }
+    });
+  }
+
+  async runProgressWithTask(taskPromise) {
+    this.showProgressModal();
+
+    let currentPercent = 4;
+    let isTaskDone = false;
+    let taskResult = null;
+    let taskError = null;
+
+    // Attach to background lead promise
+    taskPromise
+      .then((res) => {
+        taskResult = res;
+        isTaskDone = true;
+      })
+      .catch((err) => {
+        taskError = err;
+        isTaskDone = true;
+      });
+
+    const statusMilestones = [
+      { maxPct: 24, step: 1, text: 'Analyzing answers & attribution channels...' },
+      { maxPct: 54, step: 2, text: 'Auditing Meta vs Google vs Shopify overlaps...' },
+      { maxPct: 82, step: 3, text: 'Calculating Attribution Gap & Budget Leakage...' },
+      { maxPct: 94, step: 4, text: 'Finalizing personalised report & findings...' }
+    ];
+
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(() => {
+        if (taskError) {
+          clearInterval(interval);
+          this.closeProgressModal();
+          return reject(taskError);
+        }
+
+        if (isTaskDone) {
+          // Rush smoothly to 100%
+          currentPercent += 8;
+          if (currentPercent >= 100) {
+            currentPercent = 100;
+            clearInterval(interval);
+            this.updateProgress(100, '✓ Report Ready! Launching dashboard...', 4);
+
+            setTimeout(() => {
+              this.closeProgressModal();
+              resolve(taskResult);
+            }, 400);
+            return;
+          }
+        } else {
+          // Advance smoothly toward 94%
+          if (currentPercent < 94) {
+            const delta = currentPercent < 30 ? 2.5 : currentPercent < 60 ? 1.8 : 1.1;
+            currentPercent = Math.min(94, currentPercent + delta);
+          }
+        }
+
+        let currentMilestone = statusMilestones[statusMilestones.length - 1];
+        for (const m of statusMilestones) {
+          if (currentPercent <= m.maxPct) {
+            currentMilestone = m;
+            break;
+          }
+        }
+
+        const displayText = isTaskDone 
+          ? 'Finalizing personalised report & findings...' 
+          : currentMilestone.text;
+
+        this.updateProgress(currentPercent, displayText, currentMilestone.step);
+      }, 70);
+    });
   }
 
   showInputError(inputEl, errorId, show) {
