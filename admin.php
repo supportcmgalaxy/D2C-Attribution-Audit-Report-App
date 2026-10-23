@@ -713,6 +713,31 @@ $currentTab = $_GET['tab'] ?? 'leads';
       color: #FFFFFF;
     }
 
+    .btn-danger-outline {
+      background: var(--color-danger-light);
+      border: 1px solid var(--color-danger-border);
+      color: var(--color-danger);
+    }
+    .btn-danger-outline:hover {
+      background: var(--color-danger);
+      color: #FFFFFF;
+      border-color: var(--color-danger);
+      transform: translateY(-1px);
+    }
+
+    .nav-link-danger {
+      color: var(--color-danger);
+    }
+    .nav-link-danger:hover {
+      background: var(--color-danger-light);
+      color: var(--color-danger-hover);
+    }
+    .nav-tag.danger {
+      background: var(--color-danger-light);
+      color: var(--color-danger);
+      border: 1px solid var(--color-danger-border);
+    }
+
     /* Main Content Container */
     .main-content-inner {
       padding: 28px 28px 60px;
@@ -1310,6 +1335,16 @@ $currentTab = $_GET['tab'] ?? 'leads';
           <span class="nav-tag">CSV</span>
         </a>
 
+        <!-- Clear Sheet Data -->
+        <a href="admin.php?action=clear_leads" onclick="return confirm('WARNING: Are you sure you want to completely clear the Excel sheet and remove all lead records? This action cannot be undone.')" class="nav-link nav-link-danger" title="Clear all leads from the Excel sheet">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span class="nav-text">Clear Sheet Data</span>
+          <span class="nav-tag danger">RESET</span>
+        </a>
+
         <!-- Public App Preview -->
         <a href="index.html" target="_blank" class="nav-link" title="Open live public audit application">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1394,6 +1429,15 @@ $currentTab = $_GET['tab'] ?? 'leads';
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Export Excel
+          </a>
+
+          <!-- Clear Sheet Button -->
+          <a href="admin.php?action=clear_leads" onclick="return confirm('WARNING: Are you sure you want to completely clear the Excel sheet and remove all lead records? This action cannot be undone.')" class="btn btn-danger-outline" title="Clear all leads from the Excel sheet">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            Clear Sheet
           </a>
         </div>
       </header>
@@ -1557,19 +1601,17 @@ $currentTab = $_GET['tab'] ?? 'leads';
               <div class="record-count-badge">
                 Showing <strong><?= count($leadsList) ?></strong> recorded submissions
               </div>
-              <?php if (!empty($leadsList)): ?>
-                <a href="admin.php?action=clear_leads" 
-                   onclick="return confirm('WARNING: Are you sure you want to completely clear the Excel sheet and remove all lead records? This action cannot be undone.')" 
-                   class="btn" 
-                   style="background: var(--color-danger-light); color: var(--color-danger); border: 1px solid var(--color-danger-border); font-size: 12px; padding: 6px 12px;"
-                   title="Clear all leads from the Excel sheet">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                  Clear Sheet Data
-                </a>
-              <?php endif; ?>
+              <a href="admin.php?action=clear_leads" 
+                 onclick="return confirm('WARNING: Are you sure you want to completely clear the Excel sheet and remove all lead records? This action cannot be undone.')" 
+                 class="btn btn-danger-outline" 
+                 style="font-size: 12px; padding: 6px 12px;"
+                 title="Clear all leads from the Excel sheet">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Clear Sheet Data
+              </a>
             </div>
           </div>
 
