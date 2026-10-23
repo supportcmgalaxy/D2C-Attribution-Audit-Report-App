@@ -29,11 +29,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
-  <!-- Google reCAPTCHA v3 Configuration (Invisible) -->
+  <!-- Google reCAPTCHA v3 (Loaded Dynamically from .env via send_email.php?config=1) -->
   <script>
-    window.RECAPTCHA_SITE_KEY = "6LfZs_wtAAAAAOHn0vHmh6JESHXSeVkmrw2T7aCs";
+    (function() {
+      var endpoint = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'https://d2c.cmgalaxy.com/send_email.php?config=1'
+        : './send_email.php?config=1';
+      fetch(endpoint)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data && data.recaptchaSiteKey) {
+            window.RECAPTCHA_SITE_KEY = data.recaptchaSiteKey;
+            var script = document.createElement('script');
+            script.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(data.recaptchaSiteKey);
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+          }
+        })
+        .catch(function(err) {
+          console.warn('[reCAPTCHA] Could not load config from .env:', err);
+        });
+    })();
   </script>
-  <script src="https://www.google.com/recaptcha/api.js?render=6LfZs_wtAAAAAOHn0vHmh6JESHXSeVkmrw2T7aCs" async defer></script>
 </head>
 <body>
 
