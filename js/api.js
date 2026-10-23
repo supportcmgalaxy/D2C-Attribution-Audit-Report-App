@@ -61,10 +61,20 @@ async function getSiteKey() {
  * Generates an invisible Google reCAPTCHA v3 token.
  * Gracefully returns empty string if unconfigured or bypassed.
  */
-export async function getRecaptchaToken(action = 'submit_lead', timeoutMs = 3000) {
+export async function getRecaptchaToken(action = 'submit_lead', timeoutMs = 6000) {
   try {
-    const siteKey = await getSiteKey();
-    if (!siteKey) return '';
+    let siteKey = (typeof window !== 'undefined' && window.RECAPTCHA_SITE_KEY) ? window.RECAPTCHA_SITE_KEY : null;
+    
+    if (!siteKey && typeof window !== 'undefined' && window.recaptchaReadyPromise) {
+      siteKey = await window.recaptchaReadyPromise;
+    }
+    if (!siteKey) {
+      siteKey = await getSiteKey();
+    }
+    if (!siteKey) {
+      console.warn('[reCAPTCHA] Site key missing from .env');
+      return '';
+    }
 
     // Ensure Google script is loading if not already in document
     if (typeof window.grecaptcha === 'undefined' && !document.querySelector('script[src*="recaptcha/api.js"]')) {
@@ -85,6 +95,7 @@ export async function getRecaptchaToken(action = 'submit_lead', timeoutMs = 3000
     }
 
     if (typeof window.grecaptcha === 'undefined' || typeof window.grecaptcha.execute !== 'function') {
+      console.warn('[reCAPTCHA] grecaptcha.execute not ready after wait');
       return '';
     }
 
@@ -94,11 +105,13 @@ export async function getRecaptchaToken(action = 'submit_lead', timeoutMs = 3000
           const token = await window.grecaptcha.execute(siteKey, { action });
           resolve(token || '');
         } catch (e) {
+          console.error('[reCAPTCHA execute failed]:', e);
           resolve('');
         }
       });
     });
   } catch (err) {
+    console.error('[reCAPTCHA token error]:', err);
     return '';
   }
 }
@@ -351,7 +364,7 @@ export const apiService = {
           const fbResp = await fetch('https://d2c.cmgalaxy.com/send_email.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'send_otp', email, name })
+            body: JSON.stringify({ action: 'send_otp', email, name, recaptcha_token: recaptchaToken })
           });
           return await fbResp.json();
         } catch (fbErr) {}

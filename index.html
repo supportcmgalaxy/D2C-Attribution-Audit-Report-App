@@ -31,7 +31,7 @@
 
   <!-- Google reCAPTCHA v3 (Loaded Dynamically from .env via send_email.php?config=1) -->
   <script>
-    (function() {
+    window.recaptchaReadyPromise = new Promise(function(resolve) {
       var endpoint = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
         ? 'https://d2c.cmgalaxy.com/send_email.php?config=1'
         : './send_email.php?config=1';
@@ -44,13 +44,29 @@
             script.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(data.recaptchaSiteKey);
             script.async = true;
             script.defer = true;
+            script.onload = function() {
+              if (window.grecaptcha) {
+                window.grecaptcha.ready(function() {
+                  resolve(data.recaptchaSiteKey);
+                });
+              } else {
+                resolve(data.recaptchaSiteKey);
+              }
+            };
+            script.onerror = function() {
+              console.error('[reCAPTCHA] Failed to load Google script');
+              resolve(null);
+            };
             document.head.appendChild(script);
+          } else {
+            resolve(null);
           }
         })
         .catch(function(err) {
           console.warn('[reCAPTCHA] Could not load config from .env:', err);
+          resolve(null);
         });
-    })();
+    });
   </script>
 </head>
 <body>

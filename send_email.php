@@ -87,10 +87,8 @@ try {
             return ['success' => true, 'score' => 1.0, 'bypassed' => true];
         }
 
-        // Graceful non-blocking fallback: If token is empty (adblocker, client network lag, or script latency),
-        // proceed safely since 6-digit email OTP verification already validates genuine human ownership.
         if (empty($token)) {
-            return ['success' => true, 'score' => 0.5, 'bypassed' => true];
+            return ['success' => false, 'error' => 'reCAPTCHA token missing. Please refresh and try again.'];
         }
 
         $url = 'https://www.google.com/recaptcha/api/siteverify';
@@ -111,8 +109,8 @@ try {
 
         $result = json_decode($resp, true);
         if (!$result || empty($result['success'])) {
-            // Non-blocking fallback if Google API is temporarily unreachable
-            return ['success' => true, 'score' => 0.5, 'warning' => 'Google siteverify unreachable'];
+            $errCodes = isset($result['error-codes']) ? implode(', ', $result['error-codes']) : 'verification failed';
+            return ['success' => false, 'error' => "reCAPTCHA check failed ({$errCodes})."];
         }
 
         $score = (float)($result['score'] ?? 0);
