@@ -61,7 +61,7 @@ async function getSiteKey() {
  * Generates an invisible Google reCAPTCHA v3 token.
  * Gracefully returns empty string if unconfigured or bypassed.
  */
-export async function getRecaptchaToken(action = 'submit_lead', timeoutMs = 6000) {
+export async function getRecaptchaToken(action = 'submitlead', timeoutMs = 6000) {
   try {
     let siteKey = (typeof window !== 'undefined' && window.RECAPTCHA_SITE_KEY) ? window.RECAPTCHA_SITE_KEY : null;
     
@@ -75,6 +75,9 @@ export async function getRecaptchaToken(action = 'submit_lead', timeoutMs = 6000
       console.warn('[reCAPTCHA] Site key missing from .env');
       return '';
     }
+
+    // Google reCAPTCHA v3 actions may only contain alphanumeric characters and slashes (NO underscores)
+    const safeAction = (action || 'submitlead').replace(/[^a-zA-Z0-9\/]/g, '');
 
     // Ensure Google script is loading if not already in document
     if (typeof window.grecaptcha === 'undefined' && !document.querySelector('script[src*="recaptcha/api.js"]')) {
@@ -100,11 +103,23 @@ export async function getRecaptchaToken(action = 'submit_lead', timeoutMs = 6000
     }
 
     return await new Promise((resolve) => {
+      const fallbackTimer = setTimeout(() => {
+        console.warn('[reCAPTCHA] Token execution timed out');
+        resolve('');
+      }, 5000);
+
       window.grecaptcha.ready(async () => {
         try {
-          const token = await window.grecaptcha.execute(siteKey, { action });
+          let token = '';
+          try {
+            token = await window.grecaptcha.execute(siteKey, { action: safeAction });
+          } catch (execErr1) {
+            token = await window.grecaptcha.execute({ action: safeAction });
+          }
+          clearTimeout(fallbackTimer);
           resolve(token || '');
         } catch (e) {
+          clearTimeout(fallbackTimer);
           console.error('[reCAPTCHA execute failed]:', e);
           resolve('');
         }
@@ -321,7 +336,7 @@ export const apiService = {
     } catch (e) {}
 
     // Attach reCAPTCHA v3 token to lead payload
-    const recaptchaToken = await getRecaptchaToken('submit_lead');
+    const recaptchaToken = await getRecaptchaToken('submitlead');
     fullLeadRecord.recaptcha_token = recaptchaToken;
 
     // Dispatch email and Staging API sync in parallel
@@ -342,7 +357,7 @@ export const apiService = {
    */
   async sendOtp(email, name = '') {
     const endpoint = getApiEndpoint();
-    const recaptchaToken = await getRecaptchaToken('send_otp');
+    const recaptchaToken = await getRecaptchaToken('sendotp');
 
     try {
       const response = await fetch(endpoint, {

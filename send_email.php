@@ -190,10 +190,10 @@ try {
     // -------------------------------------------------------------------------
     // ACTION: SEND OTP
     // -------------------------------------------------------------------------
-    if (isset($data['action']) && $data['action'] === 'send_otp') {
+    if (isset($data['action']) && ($data['action'] === 'send_otp' || $data['action'] === 'sendotp')) {
         // Validate reCAPTCHA v3 token
         $recaptchaToken = $data['recaptcha_token'] ?? $data['recaptchaToken'] ?? '';
-        $captchaCheck = verifyGoogleRecaptcha($recaptchaToken, 'send_otp');
+        $captchaCheck = verifyGoogleRecaptcha($recaptchaToken, 'sendotp');
         if (!$captchaCheck['success']) {
             echo json_encode(['success' => false, 'error' => $captchaCheck['error']]);
             exit;
@@ -390,7 +390,7 @@ try {
 
     // Validate reCAPTCHA v3 token on report generation
     $recaptchaToken = $data['recaptcha_token'] ?? $data['recaptchaToken'] ?? '';
-    $captchaCheck = verifyGoogleRecaptcha($recaptchaToken, 'submit_lead');
+    $captchaCheck = verifyGoogleRecaptcha($recaptchaToken, 'submitlead');
     if (!$captchaCheck['success']) {
         echo json_encode(['success' => false, 'error' => $captchaCheck['error']]);
         exit;
