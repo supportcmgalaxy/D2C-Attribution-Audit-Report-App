@@ -25,6 +25,18 @@ function mockNetworkDelay(ms = 350) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Determines the target API endpoint URL with support for local file testing.
+ */
+function getApiEndpoint() {
+  if (typeof window !== 'undefined') {
+    if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'https://d2c.cmgalaxy.com/send_email.php';
+    }
+  }
+  return './send_email.php';
+}
+
 export const apiService = {
   /**
    * Initializes or restores an audit session.
@@ -246,8 +258,9 @@ export const apiService = {
    * Dispatches 6-digit OTP verification email to user work email.
    */
   async sendOtp(email, name = '') {
+    const endpoint = getApiEndpoint();
     try {
-      const response = await fetch('./send_email.php', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -256,11 +269,20 @@ export const apiService = {
           action: 'send_otp',
           email: email,
           name: name
-        }),
-        keepalive: true
+        })
       });
       return await response.json();
     } catch (err) {
+      if (endpoint === './send_email.php') {
+        try {
+          const fbResp = await fetch('https://d2c.cmgalaxy.com/send_email.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'send_otp', email, name })
+          });
+          return await fbResp.json();
+        } catch (fbErr) {}
+      }
       return { success: false, error: err.message || 'Network error sending code' };
     }
   },
@@ -269,8 +291,9 @@ export const apiService = {
    * Validates 6-digit OTP code against server.
    */
   async verifyOtp(email, otp) {
+    const endpoint = getApiEndpoint();
     try {
-      const response = await fetch('./send_email.php', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -279,11 +302,20 @@ export const apiService = {
           action: 'verify_otp',
           email: email,
           otp: otp
-        }),
-        keepalive: true
+        })
       });
       return await response.json();
     } catch (err) {
+      if (endpoint === './send_email.php') {
+        try {
+          const fbResp = await fetch('https://d2c.cmgalaxy.com/send_email.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'verify_otp', email, otp })
+          });
+          return await fbResp.json();
+        } catch (fbErr) {}
+      }
       return { success: false, error: err.message || 'Network error verifying code' };
     }
   },
@@ -292,8 +324,9 @@ export const apiService = {
    * Dispatches transactional report email to User & Admin via SMTP.
    */
   async sendReportEmail(email, reportData) {
+    const endpoint = getApiEndpoint();
     try {
-      const response = await fetch('./send_email.php', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -310,9 +343,21 @@ export const apiService = {
       }
       return result;
     } catch (err) {
+      if (endpoint === './send_email.php') {
+        try {
+          const fbResp = await fetch('https://d2c.cmgalaxy.com/send_email.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reportData),
+            keepalive: true
+          });
+          return await fbResp.json();
+        } catch (fbErr) {}
+      }
       return { success: false, error: err.message };
     }
   },
+
 
   /**
    * Syncs lead to CMGalaxy Staging Lead Reporting API.

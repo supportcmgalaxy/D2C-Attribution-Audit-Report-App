@@ -18,7 +18,7 @@ if (typeof window !== 'undefined' && window.console) {
 import { AUDIT_QUESTIONS, AUDIT_CATEGORIES, ANSWER_OPTIONS } from './auditData.js';
 import { analyzeAuditAnswers, evaluateAnswer } from './rulesEngine.js';
 import { initUTMTracking, getStoredUTM, trackEvent } from './tracking.js';
-import { apiService } from './api.js?v=3.2';
+import { apiService } from './api.js?v=3.6';
 
 class CMGalaxyAuditApp {
   constructor() {
@@ -748,7 +748,7 @@ class CMGalaxyAuditApp {
     } catch (err) {
       if (this.otpStatusMsg) {
         this.otpStatusMsg.className = 'otp-status-msg error';
-        this.otpStatusMsg.textContent = 'Network error. Please try again.';
+        this.otpStatusMsg.textContent = (err && err.message) || 'Network error. Please try again.';
       }
     } finally {
       if (spinner) spinner.style.display = 'none';
@@ -841,7 +841,7 @@ class CMGalaxyAuditApp {
     } catch (err) {
       if (this.otpStatusMsg) {
         this.otpStatusMsg.className = 'otp-status-msg error';
-        this.otpStatusMsg.textContent = 'Network error verifying code.';
+        this.otpStatusMsg.textContent = (err && err.message) || 'Network error verifying code.';
       }
     } finally {
       if (this.btnSubmitOtp) this.btnSubmitOtp.disabled = false;
