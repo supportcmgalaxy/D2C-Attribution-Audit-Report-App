@@ -141,7 +141,30 @@ if ($isAuthenticated) {
         exit;
     }
 
-    // 2. Unblock IP Action
+    // 2. Clear / Reset All Leads Action
+    if (isset($_GET['action']) && $_GET['action'] === 'clear_leads') {
+        if (!is_dir($reportsDir)) @mkdir($reportsDir, 0755, true);
+        file_put_contents($leadsJson, json_encode([], JSON_PRETTY_PRINT));
+
+        $fp = @fopen($leadsCsv, 'w');
+        if ($fp) {
+            fputs($fp, "\xEF\xBB\xBF");
+            fputcsv($fp, [
+                'Submission Date (IST)',
+                'First Name',
+                'Last Name',
+                'Full Name',
+                'Phone Number',
+                'Work Email',
+                'Company / Brand'
+            ]);
+            fclose($fp);
+        }
+        header('Location: admin.php?tab=leads&msg=cleared');
+        exit;
+    }
+
+    // 3. Unblock IP Action
     if (isset($_GET['action']) && $_GET['action'] === 'unblock' && !empty($_GET['ip'])) {
         $unblockIp = trim($_GET['ip']);
         if (file_exists($blockedJson)) {
@@ -1414,6 +1437,13 @@ $currentTab = $_GET['tab'] ?? 'leads';
             </svg>
             <div>IP address has been manually blocked from form submissions for 24 hours.</div>
           </div>
+        <?php elseif (isset($_GET['msg']) && $_GET['msg'] === 'cleared'): ?>
+          <div class="alert-banner alert-success">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <div>The Excel sheet and all recorded form submissions have been completely cleared successfully.</div>
+          </div>
         <?php endif; ?>
 
         <!-- KPI Metric Cards Grid -->
@@ -1523,8 +1553,23 @@ $currentTab = $_GET['tab'] ?? 'leads';
               <input type="text" id="lead-search" class="search-input" placeholder="Search by name, email, company, IP...">
             </div>
 
-            <div class="record-count-badge">
-              Showing <strong><?= count($leadsList) ?></strong> recorded submissions
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="record-count-badge">
+                Showing <strong><?= count($leadsList) ?></strong> recorded submissions
+              </div>
+              <?php if (!empty($leadsList)): ?>
+                <a href="admin.php?action=clear_leads" 
+                   onclick="return confirm('WARNING: Are you sure you want to completely clear the Excel sheet and remove all lead records? This action cannot be undone.')" 
+                   class="btn" 
+                   style="background: var(--color-danger-light); color: var(--color-danger); border: 1px solid var(--color-danger-border); font-size: 12px; padding: 6px 12px;"
+                   title="Clear all leads from the Excel sheet">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  Clear Sheet Data
+                </a>
+              <?php endif; ?>
             </div>
           </div>
 

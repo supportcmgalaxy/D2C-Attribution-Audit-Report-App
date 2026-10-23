@@ -326,6 +326,42 @@ try {
     }
 
     // =========================================================================
+    // 1.7. SECURE EXCEL CSV CLEAR (send_email.php?clear_leads=1&key=cmgalaxy_leads_2026)
+    // =========================================================================
+    if (isset($_GET['clear_leads'])) {
+        $secretKey = $_GET['key'] ?? '';
+        if ($secretKey !== 'cmgalaxy_leads_2026') {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['success' => false, 'error' => 'Unauthorized access. Valid secret key required.']);
+            exit;
+        }
+
+        $reportsDir = __DIR__ . '/reports';
+        if (!is_dir($reportsDir)) @mkdir($reportsDir, 0755, true);
+        file_put_contents($reportsDir . '/leads_log.json', json_encode([], JSON_PRETTY_PRINT));
+        
+        $fp = @fopen($reportsDir . '/leads.csv', 'w');
+        if ($fp) {
+            fputs($fp, "\xEF\xBB\xBF");
+            fputcsv($fp, [
+                'Submission Date (IST)',
+                'First Name',
+                'Last Name',
+                'Full Name',
+                'Phone Number',
+                'Work Email',
+                'Company / Brand'
+            ]);
+            fclose($fp);
+        }
+
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => true, 'message' => 'Excel leads sheet cleared successfully.']);
+        exit;
+    }
+
+    // =========================================================================
     // 2. INPUT DATA PROCESSING & OTP ACTIONS
     // =========================================================================
     $rawInput = file_get_contents('php://input');
