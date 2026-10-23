@@ -102,29 +102,35 @@ export async function getRecaptchaToken(action = 'submitlead', timeoutMs = 6000)
       return '';
     }
 
-    return await new Promise((resolve) => {
-      const fallbackTimer = setTimeout(() => {
-        console.warn('[reCAPTCHA] Token execution timed out');
-        resolve('');
-      }, 5000);
+    let token = '';
+    try {
+      token = await window.grecaptcha.execute(siteKey, { action: safeAction });
+    } catch (execErr1) {
+      try {
+        token = await window.grecaptcha.execute({ action: safeAction });
+      } catch (execErr2) {
+        console.error('[reCAPTCHA execute failed]:', execErr1, execErr2);
+      }
+    }
 
-      window.grecaptcha.ready(async () => {
-        try {
-          let token = '';
+    if (!token && typeof window.grecaptcha.ready === 'function') {
+      token = await new Promise((resolve) => {
+        const timer = setTimeout(() => resolve(''), 3000);
+        window.grecaptcha.ready(async () => {
           try {
-            token = await window.grecaptcha.execute(siteKey, { action: safeAction });
-          } catch (execErr1) {
-            token = await window.grecaptcha.execute({ action: safeAction });
+            const t = await window.grecaptcha.execute(siteKey, { action: safeAction });
+            clearTimeout(timer);
+            resolve(t || '');
+          } catch (e) {
+            clearTimeout(timer);
+            resolve('');
           }
-          clearTimeout(fallbackTimer);
-          resolve(token || '');
-        } catch (e) {
-          clearTimeout(fallbackTimer);
-          console.error('[reCAPTCHA execute failed]:', e);
-          resolve('');
-        }
+        });
       });
-    });
+    }
+
+    console.log('[reCAPTCHA] Token result:', token ? (token.substring(0, 10) + '... (' + token.length + ' chars)') : 'FAILED_EMPTY');
+    return token || '';
   } catch (err) {
     console.error('[reCAPTCHA token error]:', err);
     return '';

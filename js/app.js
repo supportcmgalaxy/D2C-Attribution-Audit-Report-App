@@ -2,23 +2,10 @@
  * CMGalaxy - Interactive D2C Attribution Audit Application Controller
  */
 
-// Silence all console output in the browser
-if (typeof window !== 'undefined' && window.console) {
-  const noop = () => {};
-  window.console.log = noop;
-  window.console.info = noop;
-  window.console.warn = noop;
-  window.console.error = noop;
-  window.console.debug = noop;
-  window.console.group = noop;
-  window.console.groupEnd = noop;
-  window.console.groupCollapsed = noop;
-}
-
 import { AUDIT_QUESTIONS, AUDIT_CATEGORIES, ANSWER_OPTIONS } from './auditData.js';
 import { analyzeAuditAnswers, evaluateAnswer } from './rulesEngine.js';
 import { initUTMTracking, getStoredUTM, trackEvent } from './tracking.js';
-import { apiService } from './api.js?v=3.6';
+import { apiService } from './api.js?v=4.0';
 
 class CMGalaxyAuditApp {
   constructor() {
