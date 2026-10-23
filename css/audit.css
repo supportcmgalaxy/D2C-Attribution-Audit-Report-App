@@ -369,56 +369,71 @@
 }
 
 .email-input-action-wrap {
+  position: relative;
   display: flex;
-  gap: 8px;
-  align-items: stretch;
+  align-items: center;
+  width: 100%;
 }
 
 .email-input-action-wrap .form-input {
-  flex: 1;
+  width: 100%;
+  padding-right: 124px;
 }
 
 .btn-email-verify {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 16px;
-  background: #F8FAFF;
-  border: 1.5px solid var(--color-border);
-  color: var(--color-primary);
-  border-radius: var(--rounded-md);
+  height: 32px;
+  padding: 0 13px;
+  background: var(--color-primary, #0F172A);
+  border: 1px solid transparent;
+  color: #FFFFFF;
+  border-radius: var(--rounded-md, 7px);
   font-family: var(--font-family);
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
   white-space: nowrap;
   transition: all 180ms ease;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
+  z-index: 2;
 }
 
 .btn-email-verify:hover:not(:disabled) {
-  background: #FFFFFF;
-  border-color: var(--color-tertiary);
-  color: var(--color-tertiary);
+  background: var(--color-tertiary, #2563EB);
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28);
 }
 
 .btn-email-verify:disabled {
-  opacity: 0.65;
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
 .btn-email-verify.is-verified {
-  background: #F0FDF4;
-  border-color: #BBF7D0;
-  color: #15803D;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #059669;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 0 11px;
+  height: 28px;
+  box-shadow: none;
   pointer-events: none;
 }
 
 .otp-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(22, 28, 82, 0.2);
-  border-top-color: var(--color-primary);
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #FFFFFF;
 }
 
 /* Inline OTP Card Container */

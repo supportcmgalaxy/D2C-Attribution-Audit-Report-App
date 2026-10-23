@@ -61,24 +61,32 @@ async function getSiteKey() {
  * Generates an invisible Google reCAPTCHA v3 token.
  * Gracefully returns empty string if unconfigured or bypassed.
  */
-export async function getRecaptchaToken(action = 'submit_lead') {
+export async function getRecaptchaToken(action = 'submit_lead', timeoutMs = 3000) {
   try {
     const siteKey = await getSiteKey();
     if (!siteKey) return '';
 
-    if (typeof window.grecaptcha === 'undefined') {
-      await new Promise((resolve) => {
-        const s = document.createElement('script');
-        s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
-        s.async = true;
-        s.defer = true;
-        s.onload = resolve;
-        s.onerror = () => resolve();
-        document.head.appendChild(s);
-      });
+    // Ensure Google script is loading if not already in document
+    if (typeof window.grecaptcha === 'undefined' && !document.querySelector('script[src*="recaptcha/api.js"]')) {
+      const s = document.createElement('script');
+      s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+      s.async = true;
+      s.defer = true;
+      document.head.appendChild(s);
     }
 
-    if (typeof window.grecaptcha === 'undefined') return '';
+    // Wait for window.grecaptcha.execute to be ready
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeoutMs) {
+      if (typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.execute === 'function') {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+
+    if (typeof window.grecaptcha === 'undefined' || typeof window.grecaptcha.execute !== 'function') {
+      return '';
+    }
 
     return await new Promise((resolve) => {
       window.grecaptcha.ready(async () => {
