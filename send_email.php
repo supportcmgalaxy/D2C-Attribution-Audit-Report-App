@@ -195,7 +195,7 @@ try {
                 'limit_reached' => true,
                 'count' => $count,
                 'max_allowed' => $maxAllowed,
-                'error' => "Daily submission limit reached (Maximum {$maxAllowed} reports per day). You have already submitted {$count} audit forms today. Please try again tomorrow."
+                'error' => "Daily submission limit reached (Maximum {$maxAllowed} reports per day). Please try again tomorrow."
             ];
         }
 
