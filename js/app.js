@@ -375,8 +375,32 @@ class CMGalaxyAuditApp {
 
     // Inline OTP Verification handlers
     if (this.btnTriggerOtp) {
-      this.btnTriggerOtp.addEventListener('click', () => {
+      this.btnTriggerOtp.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (this.isDailyLimitReached) return;
         if (this.isEmailVerified) return;
+
+        const email = this.inputEmail ? this.inputEmail.value.trim() : '';
+
+        // Check local limit first
+        if (this.getStoredDailySubmissionCount() >= 2) {
+          this.disableReportButtonForDailyLimit();
+          return;
+        }
+
+        // Fast-check server limit before opening or sending any OTP
+        if (email) {
+          this.btnTriggerOtp.disabled = true;
+          const check = await apiService.checkSubmissionLimit(email);
+          if (check && (check.limit_reached || check.allowed === false || (check.submissions_used && check.submissions_used >= 2))) {
+            this.disableReportButtonForDailyLimit(check.error || 'Daily limit reached: Maximum 2 reports per day allowed.');
+            return;
+          }
+          this.btnTriggerOtp.disabled = false;
+        }
+
         this.requestOtp();
       });
     }
@@ -395,11 +419,19 @@ class CMGalaxyAuditApp {
         if (emailRegex.test(email)) {
           this.limitCheckTimeout = setTimeout(() => {
             this.checkDailySubmissionLimit(email);
-          }, 450);
+          }, 250);
         }
       });
 
       this.inputEmail.addEventListener('blur', () => {
+        const email = this.inputEmail.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        if (emailRegex.test(email)) {
+          this.checkDailySubmissionLimit(email);
+        }
+      });
+
+      this.inputEmail.addEventListener('change', () => {
         const email = this.inputEmail.value.trim();
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
         if (emailRegex.test(email)) {
