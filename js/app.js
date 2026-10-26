@@ -111,9 +111,11 @@ class CMGalaxyAuditApp {
     // 2. Attach global event listeners
     this.bindEvents();
 
-    // Check if daily submission limit (2 per day) was already reached locally
+    // Check if daily submission limit (2 per day) was already reached locally or on server
     if (this.getStoredDailySubmissionCount() >= 2) {
       this.disableReportButtonForDailyLimit();
+    } else {
+      this.checkDailySubmissionLimit();
     }
 
     // 3. Check for existing active session in localStorage
@@ -636,13 +638,40 @@ class CMGalaxyAuditApp {
    */
   getStoredDailySubmissionCount() {
     try {
-      const raw = localStorage.getItem('cmg_submissions_v2');
-      if (!raw) return 0;
-      const history = JSON.parse(raw);
-      if (!Array.isArray(history)) return 0;
       const cutoff = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
-      const valid = history.filter(ts => typeof ts === 'number' && ts > cutoff);
-      localStorage.setItem('cmg_submissions_v2', JSON.stringify(valid));
+      let timestamps = [];
+
+      // 1. Check cmg_submissions_v2
+      const raw = localStorage.getItem('cmg_submissions_v2');
+      if (raw) {
+        const history = JSON.parse(raw);
+        if (Array.isArray(history)) {
+          history.forEach(ts => {
+            if (typeof ts === 'number' && ts > cutoff) timestamps.push(ts);
+          });
+        }
+      }
+
+      // 2. Check cmgalaxy_captured_leads (persisted leads from previous form submissions)
+      const capturedRaw = localStorage.getItem('cmgalaxy_captured_leads');
+      if (capturedRaw) {
+        const captured = JSON.parse(capturedRaw);
+        if (Array.isArray(captured)) {
+          captured.forEach(item => {
+            if (!item) return;
+            const ts = item.timestamp || item.submittedAt || (item.analysis && item.analysis.generatedAt);
+            const num = typeof ts === 'number' ? ts : (ts ? new Date(ts).getTime() : 0);
+            if (num > cutoff && !timestamps.includes(num)) {
+              timestamps.push(num);
+            }
+          });
+        }
+      }
+
+      const valid = Array.from(new Set(timestamps));
+      if (valid.length > 0) {
+        localStorage.setItem('cmg_submissions_v2', JSON.stringify(valid));
+      }
       return valid.length;
     } catch (e) {
       return 0;
@@ -667,11 +696,12 @@ class CMGalaxyAuditApp {
   }
 
   /**
-   * Disables "Show My Attribution Report" button, locks OTP trigger, and displays warning banner.
+   * Disables "Show My Attribution Report" button, disables OTP trigger button, and displays warning banner.
    */
   disableReportButtonForDailyLimit(customMsg = null) {
     this.isDailyLimitReached = true;
 
+    // 1. Disable green report button and style as grey disabled
     if (this.btnSubmitLead) {
       this.btnSubmitLead.disabled = true;
       this.btnSubmitLead.classList.add('is-limit-blocked');
@@ -687,13 +717,20 @@ class CMGalaxyAuditApp {
       if (spinner) spinner.style.display = 'none';
     }
 
+    // 2. Disable email box verify button and style as grey disabled
     if (this.btnTriggerOtp) {
       this.btnTriggerOtp.disabled = true;
-      this.btnTriggerOtp.classList.add('is-limit-blocked', 'is-limit-hidden');
-      this.btnTriggerOtp.style.display = 'none';
+      this.btnTriggerOtp.classList.add('is-limit-blocked');
+      this.btnTriggerOtp.style.display = 'inline-flex';
+      this.btnTriggerOtp.style.backgroundColor = '#CBD5E1';
+      this.btnTriggerOtp.style.borderColor = '#94A3B8';
+      this.btnTriggerOtp.style.color = '#64748B';
+      this.btnTriggerOtp.style.cursor = 'not-allowed';
+      this.btnTriggerOtp.style.pointerEvents = 'none';
+      this.btnTriggerOtp.style.boxShadow = 'none';
+      const otpText = this.btnTriggerOtp.querySelector('.otp-btn-text');
+      if (otpText) otpText.textContent = 'Verify Email';
     }
-    const emailActionWrap = this.inputEmail ? this.inputEmail.closest('.input-with-action, .email-input-action-wrap') : null;
-    if (emailActionWrap) emailActionWrap.classList.add('is-limit-blocked');
 
     if (this.btnResendOtp) {
       this.btnResendOtp.disabled = true;
@@ -746,29 +783,34 @@ class CMGalaxyAuditApp {
 
     if (this.btnTriggerOtp && !this.isEmailVerified) {
       this.btnTriggerOtp.disabled = false;
-      this.btnTriggerOtp.classList.remove('is-limit-blocked', 'is-limit-hidden');
+      this.btnTriggerOtp.classList.remove('is-limit-blocked');
       this.btnTriggerOtp.style.display = 'inline-flex';
+      this.btnTriggerOtp.style.backgroundColor = '';
+      this.btnTriggerOtp.style.borderColor = '';
+      this.btnTriggerOtp.style.color = '';
+      this.btnTriggerOtp.style.cursor = '';
+      this.btnTriggerOtp.style.pointerEvents = '';
+      this.btnTriggerOtp.style.boxShadow = '';
       const text = this.btnTriggerOtp.querySelector('.otp-btn-text');
       if (text) text.textContent = 'Verify Email';
     }
-    const emailActionWrap = this.inputEmail ? this.inputEmail.closest('.input-with-action, .email-input-action-wrap') : null;
-    if (emailActionWrap) emailActionWrap.classList.remove('is-limit-blocked');
   }
 
   /**
    * Queries the backend to check if the current IP or email has reached 2 submissions per 24 hours.
    */
   async checkDailySubmissionLimit(email = '') {
-    // Check local client storage quota first
+    // 1. Check local client storage quota first (instant, synchronous check)
     if (this.getStoredDailySubmissionCount() >= 2) {
-      this.disableReportButtonForDailyLimit('You have submitted 2 reports today. Daily limit reached (2/2). OTP verification and report access are disabled for 24 hours.');
+      this.disableReportButtonForDailyLimit('Daily submission limit reached: Maximum 2 reports per day are allowed. Verification and report access are locked.');
       return false;
     }
 
+    // 2. Check remote server limit via IP and Email
     try {
       const res = await apiService.checkSubmissionLimit(email);
-      if (res && (res.limit_reached || res.allowed === false)) {
-        this.disableReportButtonForDailyLimit(res.error || 'Daily limit reached: Maximum 2 reports per day are allowed. Verification and report access are locked.');
+      if (res && (res.limit_reached || res.allowed === false || (res.submissions_used && res.submissions_used >= 2))) {
+        this.disableReportButtonForDailyLimit(res.error || 'Daily submission limit reached: Maximum 2 reports per day are allowed. Verification and report access are locked.');
         return false;
       } else {
         this.enableReportButtonIfAllowed();
