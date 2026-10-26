@@ -299,6 +299,7 @@ try {
 
     // =========================================================================
     // 1.6. SECURE EXCEL CSV EXPORT (Browser me direct: send_email.php?export_leads=1&key=cmgalaxy_leads_2026)
+    // Supports optional &start_date=YYYY-MM-DD and &end_date=YYYY-MM-DD
     // =========================================================================
     if (isset($_GET['export_leads'])) {
         $secretKey = $_GET['key'] ?? '';
@@ -309,19 +310,96 @@ try {
             exit;
         }
 
-        $csvFile = __DIR__ . '/reports/leads.csv';
-        if (!file_exists($csvFile)) {
-            http_response_code(404);
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['success' => false, 'error' => 'No leads recorded in Excel sheet yet.']);
-            exit;
+        $filterStart = trim($_GET['start_date'] ?? '');
+        $filterEnd   = trim($_GET['end_date'] ?? '');
+        $startTs = null;
+        if (!empty($filterStart)) {
+            $d = DateTime::createFromFormat('Y-m-d', $filterStart);
+            if ($d && $d->format('Y-m-d') === $filterStart) {
+                $startTs = strtotime($filterStart . ' 00:00:00');
+            }
+        }
+        $endTs = null;
+        if (!empty($filterEnd)) {
+            $d = DateTime::createFromFormat('Y-m-d', $filterEnd);
+            if ($d && $d->format('Y-m-d') === $filterEnd) {
+                $endTs = strtotime($filterEnd . ' 23:59:59');
+            }
         }
 
+        if (!empty($filterStart) && !empty($filterEnd)) {
+            $dateSuffix = ($filterStart === $filterEnd) ? $filterStart : ($filterStart . '_to_' . $filterEnd);
+        } elseif (!empty($filterStart)) {
+            $dateSuffix = 'from_' . $filterStart;
+        } elseif (!empty($filterEnd)) {
+            $dateSuffix = 'until_' . $filterEnd;
+        } else {
+            $dateSuffix = date('Y-m-d');
+        }
+
+        $leadsJsonFile = __DIR__ . '/reports/leads_log.json';
+        $leadsCsvFile  = __DIR__ . '/reports/leads.csv';
+
         header('Content-Type: text/csv; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="cmgalaxy_attribution_leads_' . date('Y-m-d') . '.csv"');
+        header('Content-Disposition: attachment; filename="cmgalaxy_attribution_leads_' . $dateSuffix . '.csv"');
         header('Pragma: no-cache');
         header('Expires: 0');
-        readfile($csvFile);
+
+        $out = fopen('php://output', 'w');
+        fputs($out, "\xEF\xBB\xBF");
+
+        fputcsv($out, [
+            'Submission Date (IST)',
+            'Full Name',
+            'First Name',
+            'Last Name',
+            'Company / Brand',
+            'Work Email',
+            'Phone Number',
+            'Client IP',
+            'Audit Risk Level',
+            'Reliable Areas',
+            'Attribution Gaps',
+            'PDF Report File'
+        ]);
+
+        $leads = file_exists($leadsJsonFile) ? json_decode(@file_get_contents($leadsJsonFile), true) : [];
+        if (!empty($leads) && is_array($leads)) {
+            foreach ($leads as $l) {
+                $ts = !empty($l['timestamp']) ? (int)$l['timestamp'] : (!empty($l['date']) ? strtotime(str_replace(' - ', ' ', preg_replace('/\s*IST$/i', '', $l['date']))) : 0);
+                if ($startTs !== null && $ts > 0 && $ts < $startTs) continue;
+                if ($endTs !== null && $ts > 0 && $ts > $endTs) continue;
+
+                fputcsv($out, [
+                    $l['date'] ?? '',
+                    $l['fullName'] ?? '',
+                    $l['firstName'] ?? '',
+                    $l['lastName'] ?? '',
+                    $l['company'] ?? '',
+                    $l['email'] ?? '',
+                    $l['phone'] ?? '',
+                    $l['ip'] ?? '',
+                    $l['riskLevel'] ?? 'Moderate',
+                    $l['reliableCount'] ?? 0,
+                    $l['gapsCount'] ?? 0,
+                    $l['pdfFilename'] ?? ''
+                ]);
+            }
+        } elseif (file_exists($leadsCsvFile)) {
+            $fp = fopen($leadsCsvFile, 'r');
+            $header = fgetcsv($fp);
+            while (($row = fgetcsv($fp)) !== false) {
+                if ($startTs !== null || $endTs !== null) {
+                    $ts = !empty($row[0]) ? strtotime(str_replace(' - ', ' ', preg_replace('/\s*IST$/i', '', $row[0]))) : 0;
+                    if ($startTs !== null && $ts > 0 && $ts < $startTs) continue;
+                    if ($endTs !== null && $ts > 0 && $ts > $endTs) continue;
+                }
+                fputcsv($out, $row);
+            }
+            fclose($fp);
+        }
+
+        fclose($out);
         exit;
     }
 

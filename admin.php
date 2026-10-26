@@ -82,9 +82,55 @@ $isAuthenticated = !empty($_SESSION['cmg_admin_logged']);
 // AUTHENTICATED ACTIONS: EXCEL EXPORT & IP UNBLOCK
 // -----------------------------------------------------------------------------
 if ($isAuthenticated) {
-    // 1. Export Excel / CSV Action
+    // Helper function to extract unix timestamp from lead entry
+    if (!function_exists('getLeadTimestamp')) {
+        function getLeadTimestamp($lead) {
+            if (!empty($lead['timestamp']) && is_numeric($lead['timestamp'])) {
+                return (int)$lead['timestamp'];
+            }
+            if (!empty($lead['date'])) {
+                $raw = trim($lead['date']);
+                $raw = preg_replace('/\s*IST$/i', '', $raw);
+                $raw = str_replace(' - ', ' ', $raw);
+                $ts = strtotime($raw);
+                if ($ts !== false && $ts > 0) return $ts;
+            }
+            return 0;
+        }
+    }
+
+    // 1. Export Excel / CSV Action (supports date-wise start_date and end_date)
     if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
-        $filename = 'CMGalaxy_Attribution_Leads_' . date('Y-m-d_His') . '.csv';
+        $filterStart = trim($_GET['start_date'] ?? '');
+        $filterEnd   = trim($_GET['end_date'] ?? '');
+
+        $startTs = null;
+        if (!empty($filterStart)) {
+            $d = DateTime::createFromFormat('Y-m-d', $filterStart);
+            if ($d && $d->format('Y-m-d') === $filterStart) {
+                $startTs = strtotime($filterStart . ' 00:00:00');
+            }
+        }
+        $endTs = null;
+        if (!empty($filterEnd)) {
+            $d = DateTime::createFromFormat('Y-m-d', $filterEnd);
+            if ($d && $d->format('Y-m-d') === $filterEnd) {
+                $endTs = strtotime($filterEnd . ' 23:59:59');
+            }
+        }
+
+        // Formulate descriptive filename based on date range
+        if (!empty($filterStart) && !empty($filterEnd)) {
+            $dateSuffix = ($filterStart === $filterEnd) ? $filterStart : ($filterStart . '_to_' . $filterEnd);
+        } elseif (!empty($filterStart)) {
+            $dateSuffix = 'from_' . $filterStart;
+        } elseif (!empty($filterEnd)) {
+            $dateSuffix = 'until_' . $filterEnd;
+        } else {
+            $dateSuffix = 'All_' . date('Y-m-d');
+        }
+
+        $filename = 'CMGalaxy_Attribution_Leads_' . $dateSuffix . '.csv';
         header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Pragma: no-cache');
@@ -113,6 +159,10 @@ if ($isAuthenticated) {
         $leads = file_exists($leadsJson) ? json_decode(@file_get_contents($leadsJson), true) : [];
         if (!empty($leads) && is_array($leads)) {
             foreach ($leads as $l) {
+                $leadTs = getLeadTimestamp($l);
+                if ($startTs !== null && $leadTs > 0 && $leadTs < $startTs) continue;
+                if ($endTs !== null && $leadTs > 0 && $leadTs > $endTs) continue;
+
                 fputcsv($out, [
                     $l['date'] ?? '',
                     $l['fullName'] ?? '',
@@ -131,36 +181,19 @@ if ($isAuthenticated) {
         } elseif (file_exists($leadsCsv)) {
             // Fallback: Read from existing leads.csv
             $fp = fopen($leadsCsv, 'r');
+            $header = fgetcsv($fp);
             while (($row = fgetcsv($fp)) !== false) {
+                if ($startTs !== null || $endTs !== null) {
+                    $rowTs = getLeadTimestamp(['date' => $row[0] ?? '']);
+                    if ($startTs !== null && $rowTs > 0 && $rowTs < $startTs) continue;
+                    if ($endTs !== null && $rowTs > 0 && $rowTs > $endTs) continue;
+                }
                 fputcsv($out, $row);
             }
             fclose($fp);
         }
 
         fclose($out);
-        exit;
-    }
-
-    // 2. Clear / Reset All Leads Action
-    if (isset($_GET['action']) && $_GET['action'] === 'clear_leads') {
-        if (!is_dir($reportsDir)) @mkdir($reportsDir, 0755, true);
-        file_put_contents($leadsJson, json_encode([], JSON_PRETTY_PRINT));
-
-        $fp = @fopen($leadsCsv, 'w');
-        if ($fp) {
-            fputs($fp, "\xEF\xBB\xBF");
-            fputcsv($fp, [
-                'Submission Date (IST)',
-                'First Name',
-                'Last Name',
-                'Full Name',
-                'Phone Number',
-                'Work Email',
-                'Company / Brand'
-            ]);
-            fclose($fp);
-        }
-        header('Location: admin.php?tab=leads&msg=cleared');
         exit;
     }
 
@@ -214,9 +247,58 @@ if ($isAuthenticated) {
 }
 
 // Load Data for Dashboard
-$leadsList = [];
+$allLeads = [];
 if (file_exists($leadsJson)) {
-    $leadsList = json_decode(@file_get_contents($leadsJson), true) ?: [];
+    $allLeads = json_decode(@file_get_contents($leadsJson), true) ?: [];
+}
+$allLeadsCount = count($allLeads);
+
+// Helper function definition fallback
+if (!function_exists('getLeadTimestamp')) {
+    function getLeadTimestamp($lead) {
+        if (!empty($lead['timestamp']) && is_numeric($lead['timestamp'])) {
+            return (int)$lead['timestamp'];
+        }
+        if (!empty($lead['date'])) {
+            $raw = trim($lead['date']);
+            $raw = preg_replace('/\s*IST$/i', '', $raw);
+            $raw = str_replace(' - ', ' ', $raw);
+            $ts = strtotime($raw);
+            if ($ts !== false && $ts > 0) return $ts;
+        }
+        return 0;
+    }
+}
+
+// Date Filter Parameters for Leads Tab
+$filterStartDate = trim($_GET['start_date'] ?? '');
+$filterEndDate   = trim($_GET['end_date'] ?? '');
+
+$filterStartTs = null;
+if (!empty($filterStartDate)) {
+    $d = DateTime::createFromFormat('Y-m-d', $filterStartDate);
+    if ($d && $d->format('Y-m-d') === $filterStartDate) {
+        $filterStartTs = strtotime($filterStartDate . ' 00:00:00');
+    }
+}
+$filterEndTs = null;
+if (!empty($filterEndDate)) {
+    $d = DateTime::createFromFormat('Y-m-d', $filterEndDate);
+    if ($d && $d->format('Y-m-d') === $filterEndDate) {
+        $filterEndTs = strtotime($filterEndDate . ' 23:59:59');
+    }
+}
+
+$isDateFiltered = ($filterStartTs !== null || $filterEndTs !== null);
+
+$leadsList = $allLeads;
+if ($isDateFiltered) {
+    $leadsList = array_values(array_filter($allLeads, function($l) use ($filterStartTs, $filterEndTs) {
+        $ts = getLeadTimestamp($l);
+        if ($filterStartTs !== null && $ts > 0 && $ts < $filterStartTs) return false;
+        if ($filterEndTs !== null && $ts > 0 && $ts > $filterEndTs) return false;
+        return true;
+    }));
 }
 
 $blockedList = [];
@@ -233,9 +315,9 @@ foreach ($blockedList as $b) {
     }
 }
 
-// Today's leads count (last 24 hours)
+// Today's leads count (last 24 hours) from all leads
 $todayLeadsCount = 0;
-foreach ($leadsList as $l) {
+foreach ($allLeads as $l) {
     if (($l['timestamp'] ?? 0) >= ($now - 86400)) {
         $todayLeadsCount++;
     }
@@ -713,6 +795,23 @@ $currentTab = $_GET['tab'] ?? 'leads';
       color: #FFFFFF;
     }
 
+    .btn-outline {
+      background: #FFFFFF;
+      border: 1px solid var(--border-darker);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background: var(--bg-subtle);
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
     .btn-danger-outline {
       background: var(--color-danger-light);
       border: 1px solid var(--color-danger-border);
@@ -736,6 +835,252 @@ $currentTab = $_GET['tab'] ?? 'leads';
       background: var(--color-danger-light);
       color: var(--color-danger);
       border: 1px solid var(--color-danger-border);
+    }
+
+    /* Date Filter Toolbar & Badges */
+    .date-filter-form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .date-filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-darker);
+      border-radius: 8px;
+      padding: 3px 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .date-filter-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .filter-date-input {
+      border: none;
+      background: transparent;
+      font-family: var(--font-family);
+      font-size: 12.5px;
+      color: var(--text-main);
+      outline: none;
+      padding: 3px 2px;
+    }
+
+    .table-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter-active-notice {
+      background: var(--color-primary-light);
+      border: 1px solid var(--color-primary-border);
+      color: var(--color-primary);
+      padding: 9px 15px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .filter-clear-link {
+      color: var(--color-primary);
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 12px;
+      padding: 3px 9px;
+      background: #FFFFFF;
+      border: 1px solid var(--color-primary-border);
+      border-radius: 6px;
+      transition: all 150ms ease;
+    }
+    .filter-clear-link:hover {
+      background: var(--color-primary);
+      color: #FFFFFF;
+    }
+
+    /* Date-Wise Excel Export Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+      overflow: hidden;
+      animation: modalSlideUp 180ms ease-out forwards;
+    }
+
+    @keyframes modalSlideUp {
+      from { transform: translateY(16px) scale(0.98); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #F8FAFC;
+    }
+
+    .modal-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      line-height: 1;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: all 120ms;
+    }
+    .modal-close-btn:hover {
+      background: #E2E8F0;
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .modal-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .preset-chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .preset-chip {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 140ms ease;
+    }
+
+    .preset-chip:hover {
+      background: var(--color-primary-light);
+      border-color: var(--color-primary-border);
+      color: var(--color-primary);
+    }
+
+    .preset-chip.active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #FFFFFF;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+    }
+
+    .modal-date-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .modal-field label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .modal-date-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px 12px;
+      border: 1px solid var(--border-darker);
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-family: var(--font-family);
+      color: var(--text-main);
+      background: #FFFFFF;
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .modal-date-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .modal-info-bar {
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border-color);
+      background: #F8FAFC;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
     }
 
     /* Main Content Container */
@@ -1325,24 +1670,14 @@ $currentTab = $_GET['tab'] ?? 'leads';
         <div class="nav-section-title">Quick Actions</div>
 
         <!-- Export to Excel -->
-        <a href="admin.php?action=export_excel" class="nav-link nav-link-excel" title="Download all leads in Microsoft Excel (.csv)">
+        <a href="admin.php?action=export_excel" class="nav-link nav-link-excel" onclick="openExportModal(event)" title="Export leads to Microsoft Excel (.csv) by date or all time">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
           <span class="nav-text">Export to Excel</span>
-          <span class="nav-tag">CSV</span>
-        </a>
-
-        <!-- Clear Sheet Data -->
-        <a href="admin.php?action=clear_leads" onclick="return confirm('WARNING: Are you sure you want to completely clear the Excel sheet and remove all lead records? This action cannot be undone.')" class="nav-link nav-link-danger" title="Clear all leads from the Excel sheet">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-          <span class="nav-text">Clear Sheet Data</span>
-          <span class="nav-tag danger">RESET</span>
+          <span class="nav-tag">DATE / CSV</span>
         </a>
 
         <!-- Public App Preview -->
@@ -1421,8 +1756,8 @@ $currentTab = $_GET['tab'] ?? 'leads';
             <span>IST: <?= date('M j, Y • h:i A') ?></span>
           </div>
 
-          <!-- 1-Click Excel Download Button -->
-          <a href="admin.php?action=export_excel" class="btn btn-excel" title="Download all leads in Microsoft Excel (.csv)">
+          <!-- Date-Wise Excel Download Button -->
+          <a href="admin.php?action=export_excel" class="btn btn-excel" onclick="openExportModal(event)" title="Export leads to Microsoft Excel (.csv) date-wise">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -1472,13 +1807,6 @@ $currentTab = $_GET['tab'] ?? 'leads';
             </svg>
             <div>IP address has been manually blocked from form submissions for 24 hours.</div>
           </div>
-        <?php elseif (isset($_GET['msg']) && $_GET['msg'] === 'cleared'): ?>
-          <div class="alert-banner alert-success">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <div>The Excel sheet and all recorded form submissions have been completely cleared successfully.</div>
-          </div>
         <?php endif; ?>
 
         <!-- KPI Metric Cards Grid -->
@@ -1497,7 +1825,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
                 </svg>
               </div>
             </div>
-            <div class="kpi-value"><?= count($leadsList) ?></div>
+            <div class="kpi-value"><?= $allLeadsCount ?></div>
             <div class="kpi-footer">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
@@ -1588,23 +1916,72 @@ $currentTab = $_GET['tab'] ?? 'leads';
               <input type="text" id="lead-search" class="search-input" placeholder="Search by name, email, company, IP...">
             </div>
 
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <div class="record-count-badge">
-                Showing <strong><?= count($leadsList) ?></strong> recorded submissions
+            <!-- Date Range Filter Form -->
+            <form method="GET" action="admin.php" class="date-filter-form">
+              <input type="hidden" name="tab" value="leads">
+              <div class="date-filter-group">
+                <label for="filter-start-date" class="date-filter-label">From</label>
+                <input type="date" id="filter-start-date" name="start_date" value="<?= htmlspecialchars($filterStartDate) ?>" class="filter-date-input" title="Filter from start date">
               </div>
-              <a href="admin.php?action=clear_leads" 
-                 onclick="return confirm('WARNING: Are you sure you want to completely clear the Excel sheet and remove all lead records? This action cannot be undone.')" 
-                 class="btn btn-danger-outline" 
-                 style="font-size: 12px; padding: 6px 12px;"
-                 title="Clear all leads from the Excel sheet">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <div class="date-filter-group">
+                <label for="filter-end-date" class="date-filter-label">To</label>
+                <input type="date" id="filter-end-date" name="end_date" value="<?= htmlspecialchars($filterEndDate) ?>" class="filter-date-input" title="Filter to end date">
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm" title="Apply date filter to table">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                 </svg>
-                Clear Sheet Data
-              </a>
+                Filter
+              </button>
+              <?php if ($isDateFiltered): ?>
+                <a href="admin.php?tab=leads" class="btn btn-outline btn-sm" title="Reset date filter and view all leads">
+                  Reset
+                </a>
+              <?php endif; ?>
+            </form>
+
+            <div class="table-actions-group">
+              <div class="record-count-badge">
+                <?php if ($isDateFiltered): ?>
+                  Showing <strong><?= count($leadsList) ?></strong> of <?= $allLeadsCount ?> leads
+                <?php else: ?>
+                  Showing <strong><?= count($leadsList) ?></strong> leads
+                <?php endif; ?>
+              </div>
+
+              <?php if ($isDateFiltered): ?>
+                <a href="admin.php?action=export_excel&start_date=<?= urlencode($filterStartDate) ?>&end_date=<?= urlencode($filterEndDate) ?>" 
+                   class="btn btn-excel btn-sm" 
+                   title="Export this filtered date range to Excel (.csv)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Export Filtered CSV
+                </a>
+              <?php else: ?>
+                <button type="button" 
+                        onclick="openExportModal()" 
+                        class="btn btn-excel btn-sm" 
+                        title="Export leads to Excel (.csv) by date range or all time">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Export Excel
+                </button>
+              <?php endif; ?>
             </div>
           </div>
+
+          <?php if ($isDateFiltered): ?>
+            <div class="filter-active-notice">
+              <span>📅 Filtered by Date: <strong><?= htmlspecialchars($filterStartDate ?: 'Earliest') ?></strong> to <strong><?= htmlspecialchars($filterEndDate ?: 'Latest') ?></strong> (<?= count($leadsList) ?> matching)</span>
+              <a href="admin.php?tab=leads" class="filter-clear-link">✕ Clear Date Filter</a>
+            </div>
+          <?php endif; ?>
 
           <div class="table-card">
             <?php if (empty($leadsList)): ?>
@@ -1911,7 +2288,68 @@ $currentTab = $_GET['tab'] ?? 'leads';
 
   </div>
 
-  <!-- Real-Time Instant Search & Mobile Toggle Scripts -->
+  <!-- DATE-WISE EXCEL EXPORT MODAL -->
+  <div class="modal-backdrop" id="export-modal" onclick="handleBackdropClick(event)">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" style="color: var(--color-success);">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Export Leads to Excel (.CSV)
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeExportModal()" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <label class="modal-label">Quick Date Presets</label>
+        <div class="preset-chips-wrap">
+          <button type="button" class="preset-chip active" onclick="applyPreset('all', this)">All Time</button>
+          <button type="button" class="preset-chip" onclick="applyPreset('today', this)">Today</button>
+          <button type="button" class="preset-chip" onclick="applyPreset('yesterday', this)">Yesterday</button>
+          <button type="button" class="preset-chip" onclick="applyPreset('last7', this)">Last 7 Days</button>
+          <button type="button" class="preset-chip" onclick="applyPreset('last30', this)">Last 30 Days</button>
+          <button type="button" class="preset-chip" onclick="applyPreset('this_month', this)">This Month</button>
+        </div>
+
+        <div class="modal-date-row">
+          <div class="modal-field">
+            <label for="modal-start-date">From Date</label>
+            <input type="date" id="modal-start-date" class="modal-date-input" onchange="onCustomDateInput()">
+          </div>
+          <div class="modal-field">
+            <label for="modal-end-date">To Date</label>
+            <input type="date" id="modal-end-date" class="modal-date-input" onchange="onCustomDateInput()">
+          </div>
+        </div>
+
+        <div class="modal-info-bar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; color: var(--color-primary);">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span id="export-summary-text">Exporting all recorded submissions across all dates.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeExportModal()">Cancel</button>
+        <button type="button" class="btn btn-excel" onclick="triggerDownloadFromModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Download Excel File (.csv)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-Time Instant Search, Mobile Toggle & Date Export Scripts -->
   <script>
     // Search Filter
     const searchInput = document.getElementById('lead-search');
@@ -1941,6 +2379,120 @@ $currentTab = $_GET['tab'] ?? 'leads';
         overlay.classList.remove('open');
       });
     }
+
+    // Date Presets & Date-Wise Export Modal Logic
+    function formatDateYMD(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function openExportModal(event) {
+      if (event && event.preventDefault) event.preventDefault();
+      const modal = document.getElementById('export-modal');
+      if (!modal) return;
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeExportModal() {
+      const modal = document.getElementById('export-modal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function handleBackdropClick(event) {
+      if (event.target && event.target.id === 'export-modal') {
+        closeExportModal();
+      }
+    }
+
+    function applyPreset(preset, el) {
+      const chips = document.querySelectorAll('.preset-chip');
+      chips.forEach(c => c.classList.remove('active'));
+      if (el) el.classList.add('active');
+
+      const startInput = document.getElementById('modal-start-date');
+      const endInput = document.getElementById('modal-end-date');
+      const summaryText = document.getElementById('export-summary-text');
+      if (!startInput || !endInput || !summaryText) return;
+
+      const now = new Date();
+      const todayStr = formatDateYMD(now);
+
+      if (preset === 'today') {
+        startInput.value = todayStr;
+        endInput.value = todayStr;
+        summaryText.textContent = 'Exporting submissions from today (' + todayStr + ').';
+      } else if (preset === 'yesterday') {
+        const y = new Date();
+        y.setDate(y.getDate() - 1);
+        const yStr = formatDateYMD(y);
+        startInput.value = yStr;
+        endInput.value = yStr;
+        summaryText.textContent = 'Exporting submissions from yesterday (' + yStr + ').';
+      } else if (preset === 'last7') {
+        const p = new Date();
+        p.setDate(p.getDate() - 6);
+        startInput.value = formatDateYMD(p);
+        endInput.value = todayStr;
+        summaryText.textContent = 'Exporting submissions from the last 7 days (' + formatDateYMD(p) + ' to ' + todayStr + ').';
+      } else if (preset === 'last30') {
+        const p = new Date();
+        p.setDate(p.getDate() - 29);
+        startInput.value = formatDateYMD(p);
+        endInput.value = todayStr;
+        summaryText.textContent = 'Exporting submissions from the last 30 days (' + formatDateYMD(p) + ' to ' + todayStr + ').';
+      } else if (preset === 'this_month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        startInput.value = formatDateYMD(firstDay);
+        endInput.value = todayStr;
+        summaryText.textContent = 'Exporting submissions from this month (' + formatDateYMD(firstDay) + ' to ' + todayStr + ').';
+      } else {
+        // All time
+        startInput.value = '';
+        endInput.value = '';
+        summaryText.textContent = 'Exporting all recorded submissions across all dates.';
+      }
+    }
+
+    function onCustomDateInput() {
+      const chips = document.querySelectorAll('.preset-chip');
+      chips.forEach(c => c.classList.remove('active'));
+      const startInput = document.getElementById('modal-start-date');
+      const endInput = document.getElementById('modal-end-date');
+      const summaryText = document.getElementById('export-summary-text');
+      if (!startInput || !endInput || !summaryText) return;
+
+      if (startInput.value && endInput.value) {
+        summaryText.textContent = 'Exporting submissions between ' + startInput.value + ' and ' + endInput.value + '.';
+      } else if (startInput.value) {
+        summaryText.textContent = 'Exporting submissions from ' + startInput.value + ' onward.';
+      } else if (endInput.value) {
+        summaryText.textContent = 'Exporting submissions up until ' + endInput.value + '.';
+      } else {
+        summaryText.textContent = 'Exporting all recorded submissions across all dates.';
+      }
+    }
+
+    function triggerDownloadFromModal() {
+      const start = document.getElementById('modal-start-date').value.trim();
+      const end = document.getElementById('modal-end-date').value.trim();
+      let url = 'admin.php?action=export_excel';
+      if (start) url += '&start_date=' + encodeURIComponent(start);
+      if (end) url += '&end_date=' + encodeURIComponent(end);
+      window.location.href = url;
+      closeExportModal();
+    }
+
+    // Escape key listener to close modal
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeExportModal();
+      }
+    });
   </script>
 <?php endif; ?>
 
