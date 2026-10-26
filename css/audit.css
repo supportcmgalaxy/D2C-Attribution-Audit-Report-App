@@ -342,13 +342,18 @@
 }
 
 .lead-submit-btn:disabled,
-.lead-submit-btn.is-limit-blocked {
-  background: #E2E8F0 !important;
+.lead-submit-btn.is-limit-blocked,
+#btn-submit-lead:disabled,
+#btn-submit-lead.is-limit-blocked {
+  background: #CBD5E1 !important;
+  background-color: #CBD5E1 !important;
   color: #64748B !important;
-  border-color: #CBD5E1 !important;
+  border-color: #94A3B8 !important;
   cursor: not-allowed !important;
+  pointer-events: none !important;
   box-shadow: none !important;
-  opacity: 0.85;
+  transform: none !important;
+  opacity: 0.8 !important;
 }
 
 .lead-limit-banner {
@@ -404,16 +409,22 @@
   line-height: 14px;
 }
 
-.email-input-action-wrap {
+.email-input-action-wrap,
+.input-with-action {
   position: relative;
   display: flex;
   align-items: center;
   width: 100%;
 }
 
-.email-input-action-wrap .form-input {
+.email-input-action-wrap .form-input,
+.input-with-action .form-input {
   width: 100%;
   padding-right: 124px;
+}
+
+.input-with-action.is-limit-blocked .form-input {
+  padding-right: 16px !important;
 }
 
 .btn-email-verify {
@@ -440,6 +451,11 @@
   transition: all 180ms ease;
   box-shadow: 0 2px 6px rgba(58, 125, 255, 0.28);
   z-index: 2;
+}
+
+.btn-email-verify.is-limit-hidden,
+.input-with-action.is-limit-blocked .btn-email-verify {
+  display: none !important;
 }
 
 .btn-email-verify:hover:not(:disabled) {

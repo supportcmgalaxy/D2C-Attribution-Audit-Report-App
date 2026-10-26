@@ -675,6 +675,12 @@ class CMGalaxyAuditApp {
     if (this.btnSubmitLead) {
       this.btnSubmitLead.disabled = true;
       this.btnSubmitLead.classList.add('is-limit-blocked');
+      this.btnSubmitLead.style.backgroundColor = '#CBD5E1';
+      this.btnSubmitLead.style.borderColor = '#94A3B8';
+      this.btnSubmitLead.style.color = '#64748B';
+      this.btnSubmitLead.style.cursor = 'not-allowed';
+      this.btnSubmitLead.style.pointerEvents = 'none';
+      this.btnSubmitLead.style.boxShadow = 'none';
       const textEl = this.btnSubmitLead.querySelector('.btn-text');
       if (textEl) textEl.textContent = 'Daily Limit Reached (2/2 Submissions Used)';
       const spinner = this.btnSubmitLead.querySelector('.spinner');
@@ -683,10 +689,11 @@ class CMGalaxyAuditApp {
 
     if (this.btnTriggerOtp) {
       this.btnTriggerOtp.disabled = true;
-      this.btnTriggerOtp.classList.add('is-limit-blocked');
-      const text = this.btnTriggerOtp.querySelector('.otp-btn-text');
-      if (text) text.textContent = 'Limit Reached';
+      this.btnTriggerOtp.classList.add('is-limit-blocked', 'is-limit-hidden');
+      this.btnTriggerOtp.style.display = 'none';
     }
+    const emailActionWrap = this.inputEmail ? this.inputEmail.closest('.input-with-action, .email-input-action-wrap') : null;
+    if (emailActionWrap) emailActionWrap.classList.add('is-limit-blocked');
 
     if (this.btnResendOtp) {
       this.btnResendOtp.disabled = true;
@@ -721,6 +728,12 @@ class CMGalaxyAuditApp {
     if (this.btnSubmitLead) {
       this.btnSubmitLead.disabled = false;
       this.btnSubmitLead.classList.remove('is-limit-blocked');
+      this.btnSubmitLead.style.backgroundColor = '';
+      this.btnSubmitLead.style.borderColor = '';
+      this.btnSubmitLead.style.color = '';
+      this.btnSubmitLead.style.cursor = '';
+      this.btnSubmitLead.style.pointerEvents = '';
+      this.btnSubmitLead.style.boxShadow = '';
       const textEl = this.btnSubmitLead.querySelector('.btn-text');
       if (textEl && textEl.textContent.includes('Daily Limit Reached')) {
         textEl.textContent = 'Show My Attribution Report →';
@@ -733,12 +746,13 @@ class CMGalaxyAuditApp {
 
     if (this.btnTriggerOtp && !this.isEmailVerified) {
       this.btnTriggerOtp.disabled = false;
-      this.btnTriggerOtp.classList.remove('is-limit-blocked');
+      this.btnTriggerOtp.classList.remove('is-limit-blocked', 'is-limit-hidden');
+      this.btnTriggerOtp.style.display = 'inline-flex';
       const text = this.btnTriggerOtp.querySelector('.otp-btn-text');
-      if (text && text.textContent === 'Limit Reached') {
-        text.textContent = 'Verify Email';
-      }
+      if (text) text.textContent = 'Verify Email';
     }
+    const emailActionWrap = this.inputEmail ? this.inputEmail.closest('.input-with-action, .email-input-action-wrap') : null;
+    if (emailActionWrap) emailActionWrap.classList.remove('is-limit-blocked');
   }
 
   /**
@@ -834,14 +848,7 @@ class CMGalaxyAuditApp {
     // Check if email has been verified
     if (!this.isEmailVerified || this.verifiedEmail.toLowerCase() !== email.toLowerCase()) {
       this.pendingReportSubmission = true;
-      this.requestOtp();
-      if (this.inlineOtpCard) {
-        this.inlineOtpCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-      if (this.otpStatusMsg) {
-        this.otpStatusMsg.className = 'otp-status-msg';
-        this.otpStatusMsg.textContent = 'Please enter the 6-digit verification code to continue.';
-      }
+      await this.requestOtp();
       return;
     }
 
@@ -857,7 +864,12 @@ class CMGalaxyAuditApp {
       const text = this.btnTriggerOtp.querySelector('.otp-btn-text');
       if (text) text.textContent = 'Verify Email';
       if (!this.isDailyLimitReached) {
+        this.btnTriggerOtp.style.display = 'inline-flex';
         this.btnTriggerOtp.disabled = false;
+        this.btnTriggerOtp.classList.remove('is-limit-hidden', 'is-limit-blocked');
+      } else {
+        this.btnTriggerOtp.style.display = 'none';
+        this.btnTriggerOtp.disabled = true;
       }
     }
     if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
@@ -866,7 +878,11 @@ class CMGalaxyAuditApp {
   async requestOtp(isResend = false) {
     // Guard against daily submission limit: OTP must NOT be sent if user already reached 2 submissions
     if (this.isDailyLimitReached || this.getStoredDailySubmissionCount() >= 2) {
+      if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
       this.disableReportButtonForDailyLimit('Daily limit reached: Maximum 2 report submissions per day are allowed. Verification OTP cannot be sent.');
+      if (this.leadLimitBanner) {
+        this.leadLimitBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
       return;
     }
 
@@ -879,21 +895,21 @@ class CMGalaxyAuditApp {
     }
     this.showInputError(this.inputEmail, 'error-email', false);
 
+    // Show loading state on main submit button while verifying quota & sending OTP
+    const submitBtnText = this.btnSubmitLead ? this.btnSubmitLead.querySelector('.btn-text') : null;
+    const submitSpinner = this.btnSubmitLead ? this.btnSubmitLead.querySelector('.spinner') : null;
+    if (this.btnSubmitLead && !isResend) {
+      this.btnSubmitLead.disabled = true;
+      if (submitBtnText) submitBtnText.textContent = 'Verifying Email & Quota...';
+      if (submitSpinner) submitSpinner.style.display = 'inline-block';
+    }
+
     const targetBtn = isResend ? this.btnResendOtp : this.btnTriggerOtp;
     if (targetBtn) targetBtn.disabled = true;
-
     const spinner = targetBtn ? targetBtn.querySelector('.spinner, .otp-spinner') : null;
     const textEl = targetBtn ? targetBtn.querySelector('.otp-btn-text') : null;
     if (spinner) spinner.style.display = 'inline-block';
     if (textEl && !isResend) textEl.textContent = 'Sending...';
-
-    if (this.otpStatusMsg) {
-      this.otpStatusMsg.className = 'otp-status-msg';
-      this.otpStatusMsg.textContent = 'Sending 6-digit verification code...';
-    }
-
-    if (this.otpTargetEmail) this.otpTargetEmail.textContent = email;
-    if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'flex';
 
     const firstName = this.inputFirstName ? this.inputFirstName.value.trim() : '';
     const lastName = this.inputLastName ? this.inputLastName.value.trim() : '';
@@ -904,15 +920,20 @@ class CMGalaxyAuditApp {
 
       // Check if daily submission limit reached on server (3rd attempt rejected)
       if (res && (res.limit_reached || (res.success === false && res.error && res.error.toLowerCase().includes('limit')))) {
+        if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
         this.disableReportButtonForDailyLimit(res.error || 'Daily limit reached: Maximum 2 reports per day. OTP cannot be sent.');
-        if (this.otpStatusMsg) {
-          this.otpStatusMsg.className = 'otp-status-msg error';
-          this.otpStatusMsg.textContent = res.error || 'Daily limit reached. OTP cannot be sent.';
+        if (this.leadLimitBanner) {
+          this.leadLimitBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
         return;
       }
 
       if (res && res.success) {
+        if (this.otpTargetEmail) this.otpTargetEmail.textContent = email;
+        if (this.inlineOtpCard) {
+          this.inlineOtpCard.style.display = 'flex';
+          this.inlineOtpCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
         if (this.otpStatusMsg) {
           this.otpStatusMsg.className = 'otp-status-msg success';
           this.otpStatusMsg.textContent = '✓ Verification code sent to your email!';
@@ -922,19 +943,28 @@ class CMGalaxyAuditApp {
           this.inputOtpCode.focus();
         }
         this.startResendTimer();
+        if (this.btnSubmitLead) {
+          this.btnSubmitLead.disabled = false;
+          if (submitBtnText) submitBtnText.textContent = 'Show My Attribution Report →';
+        }
       } else {
-        if (this.otpStatusMsg) {
-          this.otpStatusMsg.className = 'otp-status-msg error';
-          this.otpStatusMsg.textContent = (res && res.error) || 'Failed to send code. Please try again.';
+        if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
+        alert((res && res.error) || 'Failed to send code. Please try again.');
+        if (this.btnSubmitLead && !this.isDailyLimitReached) {
+          this.btnSubmitLead.disabled = false;
+          if (submitBtnText) submitBtnText.textContent = 'Show My Attribution Report →';
         }
       }
     } catch (err) {
-      if (this.otpStatusMsg) {
-        this.otpStatusMsg.className = 'otp-status-msg error';
-        this.otpStatusMsg.textContent = (err && err.message) || 'Network error. Please try again.';
+      if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
+      alert((err && err.message) || 'Network error sending verification code. Please try again.');
+      if (this.btnSubmitLead && !this.isDailyLimitReached) {
+        this.btnSubmitLead.disabled = false;
+        if (submitBtnText) submitBtnText.textContent = 'Show My Attribution Report →';
       }
     } finally {
       if (spinner) spinner.style.display = 'none';
+      if (submitSpinner) submitSpinner.style.display = 'none';
       if (!isResend && !this.isDailyLimitReached) {
         if (textEl) textEl.textContent = 'Verify Email';
         if (targetBtn) targetBtn.disabled = false;
