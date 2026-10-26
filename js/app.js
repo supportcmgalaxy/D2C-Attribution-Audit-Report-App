@@ -96,6 +96,11 @@ class CMGalaxyAuditApp {
     this.btnResendOtp = document.getElementById('btn-resend-otp');
     this.resendCountdown = document.getElementById('resend-countdown');
     this.btnChangeEmail = document.getElementById('btn-change-email');
+
+    // Daily submission rate limit tracking (max 2 per day)
+    this.leadLimitBanner = document.getElementById('lead-limit-banner');
+    this.isDailyLimitReached = false;
+    this.limitCheckTimeout = null;
   }
 
   async init() {
@@ -105,6 +110,11 @@ class CMGalaxyAuditApp {
 
     // 2. Attach global event listeners
     this.bindEvents();
+
+    // Check if daily submission limit (2 per day) was already reached locally
+    if (this.getStoredDailySubmissionCount() >= 2) {
+      this.disableReportButtonForDailyLimit();
+    }
 
     // 3. Check for existing active session in localStorage
     const stored = apiService.getSessionFromStorage();
@@ -375,6 +385,24 @@ class CMGalaxyAuditApp {
         if (this.isEmailVerified && this.inputEmail.value.trim().toLowerCase() !== this.verifiedEmail.toLowerCase()) {
           this.resetEmailVerification();
         }
+
+        // Debounce limit check on email typing
+        clearTimeout(this.limitCheckTimeout);
+        const email = this.inputEmail.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        if (emailRegex.test(email)) {
+          this.limitCheckTimeout = setTimeout(() => {
+            this.checkDailySubmissionLimit(email);
+          }, 450);
+        }
+      });
+
+      this.inputEmail.addEventListener('blur', () => {
+        const email = this.inputEmail.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        if (emailRegex.test(email)) {
+          this.checkDailySubmissionLimit(email);
+        }
       });
     }
 
@@ -429,6 +457,12 @@ class CMGalaxyAuditApp {
     // Show/hide restart button in header
     if (this.btnRestart) {
       this.btnRestart.style.display = viewName === 'landing' ? 'none' : 'inline-flex';
+    }
+
+    // On switching to lead capture view, check 2-submission daily rate limit immediately
+    if (viewName === 'lead') {
+      const email = this.inputEmail ? this.inputEmail.value.trim() : '';
+      this.checkDailySubmissionLimit(email);
     }
   }
 
@@ -597,8 +631,151 @@ class CMGalaxyAuditApp {
     }
   }
 
+  /**
+   * Reads submissions made in the last 24 hours from client localStorage.
+   */
+  getStoredDailySubmissionCount() {
+    try {
+      const raw = localStorage.getItem('cmg_submissions_v2');
+      if (!raw) return 0;
+      const history = JSON.parse(raw);
+      if (!Array.isArray(history)) return 0;
+      const cutoff = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
+      const valid = history.filter(ts => typeof ts === 'number' && ts > cutoff);
+      localStorage.setItem('cmg_submissions_v2', JSON.stringify(valid));
+      return valid.length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  /**
+   * Records a successful report submission in client storage and checks limit.
+   */
+  recordClientSubmissionSuccess() {
+    try {
+      const raw = localStorage.getItem('cmg_submissions_v2');
+      const history = raw ? JSON.parse(raw) : [];
+      const cutoff = Date.now() - (24 * 60 * 60 * 1000);
+      const valid = Array.isArray(history) ? history.filter(ts => typeof ts === 'number' && ts > cutoff) : [];
+      valid.push(Date.now());
+      localStorage.setItem('cmg_submissions_v2', JSON.stringify(valid));
+      if (valid.length >= 2) {
+        this.disableReportButtonForDailyLimit();
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * Disables "Show My Attribution Report" button, locks OTP trigger, and displays warning banner.
+   */
+  disableReportButtonForDailyLimit(customMsg = null) {
+    this.isDailyLimitReached = true;
+
+    if (this.btnSubmitLead) {
+      this.btnSubmitLead.disabled = true;
+      this.btnSubmitLead.classList.add('is-limit-blocked');
+      const textEl = this.btnSubmitLead.querySelector('.btn-text');
+      if (textEl) textEl.textContent = 'Daily Limit Reached (2/2 Submissions Used)';
+      const spinner = this.btnSubmitLead.querySelector('.spinner');
+      if (spinner) spinner.style.display = 'none';
+    }
+
+    if (this.btnTriggerOtp) {
+      this.btnTriggerOtp.disabled = true;
+      this.btnTriggerOtp.classList.add('is-limit-blocked');
+      const text = this.btnTriggerOtp.querySelector('.otp-btn-text');
+      if (text) text.textContent = 'Limit Reached';
+    }
+
+    if (this.btnResendOtp) {
+      this.btnResendOtp.disabled = true;
+    }
+
+    if (this.inlineOtpCard) {
+      this.inlineOtpCard.style.display = 'none';
+    }
+
+    if (this.leadLimitBanner) {
+      this.leadLimitBanner.style.display = 'flex';
+      if (customMsg) {
+        const descEl = this.leadLimitBanner.querySelector('div');
+        if (descEl) {
+          descEl.innerHTML = `<strong style="display: block; font-size: 14px; margin-bottom: 2px;">Daily Limit Reached (2/2 Submissions)</strong>${customMsg}`;
+        }
+      }
+    }
+  }
+
+  /**
+   * Re-enables report button if user is within allowed submission quota.
+   */
+  enableReportButtonIfAllowed() {
+    if (this.getStoredDailySubmissionCount() >= 2) {
+      this.disableReportButtonForDailyLimit();
+      return;
+    }
+
+    this.isDailyLimitReached = false;
+
+    if (this.btnSubmitLead) {
+      this.btnSubmitLead.disabled = false;
+      this.btnSubmitLead.classList.remove('is-limit-blocked');
+      const textEl = this.btnSubmitLead.querySelector('.btn-text');
+      if (textEl && textEl.textContent.includes('Daily Limit Reached')) {
+        textEl.textContent = 'Show My Attribution Report →';
+      }
+    }
+
+    if (this.leadLimitBanner) {
+      this.leadLimitBanner.style.display = 'none';
+    }
+
+    if (this.btnTriggerOtp && !this.isEmailVerified) {
+      this.btnTriggerOtp.disabled = false;
+      this.btnTriggerOtp.classList.remove('is-limit-blocked');
+      const text = this.btnTriggerOtp.querySelector('.otp-btn-text');
+      if (text && text.textContent === 'Limit Reached') {
+        text.textContent = 'Verify Email';
+      }
+    }
+  }
+
+  /**
+   * Queries the backend to check if the current IP or email has reached 2 submissions per 24 hours.
+   */
+  async checkDailySubmissionLimit(email = '') {
+    // Check local client storage quota first
+    if (this.getStoredDailySubmissionCount() >= 2) {
+      this.disableReportButtonForDailyLimit('You have submitted 2 reports today. Daily limit reached (2/2). OTP verification and report access are disabled for 24 hours.');
+      return false;
+    }
+
+    try {
+      const res = await apiService.checkSubmissionLimit(email);
+      if (res && (res.limit_reached || res.allowed === false)) {
+        this.disableReportButtonForDailyLimit(res.error || 'Daily limit reached: Maximum 2 reports per day are allowed. Verification and report access are locked.');
+        return false;
+      } else {
+        this.enableReportButtonIfAllowed();
+        return true;
+      }
+    } catch (err) {
+      return true;
+    }
+  }
+
   async handleLeadSubmit(e) {
     e.preventDefault();
+
+    // 1. Guard against daily submission limit (maximum 2 submissions per 24 hours)
+    if (this.isDailyLimitReached || this.getStoredDailySubmissionCount() >= 2) {
+      this.disableReportButtonForDailyLimit('Daily limit reached: Maximum 2 reports per day are allowed. OTP verification and report generation are locked.');
+      if (this.leadLimitBanner) {
+        this.leadLimitBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      return;
+    }
 
     const firstName = this.inputFirstName ? this.inputFirstName.value.trim() : '';
     const lastName = this.inputLastName ? this.inputLastName.value.trim() : '';
@@ -679,12 +856,20 @@ class CMGalaxyAuditApp {
       this.btnTriggerOtp.classList.remove('is-verified');
       const text = this.btnTriggerOtp.querySelector('.otp-btn-text');
       if (text) text.textContent = 'Verify Email';
-      this.btnTriggerOtp.disabled = false;
+      if (!this.isDailyLimitReached) {
+        this.btnTriggerOtp.disabled = false;
+      }
     }
     if (this.inlineOtpCard) this.inlineOtpCard.style.display = 'none';
   }
 
   async requestOtp(isResend = false) {
+    // Guard against daily submission limit: OTP must NOT be sent if user already reached 2 submissions
+    if (this.isDailyLimitReached || this.getStoredDailySubmissionCount() >= 2) {
+      this.disableReportButtonForDailyLimit('Daily limit reached: Maximum 2 report submissions per day are allowed. Verification OTP cannot be sent.');
+      return;
+    }
+
     const email = this.inputEmail ? this.inputEmail.value.trim() : '';
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     if (!email || !emailRegex.test(email)) {
@@ -716,6 +901,17 @@ class CMGalaxyAuditApp {
 
     try {
       const res = await apiService.sendOtp(email, fullName);
+
+      // Check if daily submission limit reached on server (3rd attempt rejected)
+      if (res && (res.limit_reached || (res.success === false && res.error && res.error.toLowerCase().includes('limit')))) {
+        this.disableReportButtonForDailyLimit(res.error || 'Daily limit reached: Maximum 2 reports per day. OTP cannot be sent.');
+        if (this.otpStatusMsg) {
+          this.otpStatusMsg.className = 'otp-status-msg error';
+          this.otpStatusMsg.textContent = res.error || 'Daily limit reached. OTP cannot be sent.';
+        }
+        return;
+      }
+
       if (res && res.success) {
         if (this.otpStatusMsg) {
           this.otpStatusMsg.className = 'otp-status-msg success';
@@ -739,8 +935,10 @@ class CMGalaxyAuditApp {
       }
     } finally {
       if (spinner) spinner.style.display = 'none';
-      if (textEl && !isResend) textEl.textContent = 'Verify Email';
-      if (targetBtn && !isResend) targetBtn.disabled = false;
+      if (!isResend && !this.isDailyLimitReached) {
+        if (textEl) textEl.textContent = 'Verify Email';
+        if (targetBtn) targetBtn.disabled = false;
+      }
     }
   }
 
@@ -902,14 +1100,27 @@ class CMGalaxyAuditApp {
       if (this.leadForm) this.leadForm.reset();
       this.resetEmailVerification();
 
+      // Record successful submission for this browser (2 per day limit)
+      this.recordClientSubmissionSuccess();
+
       // Reveal personalized report immediately!
       this.showReport(true);
     } catch (err) {
       this.closeProgressModal();
-      alert("We couldn't generate your report right now. Your answers are saved. Please try again.");
+      const errMsg = err && err.message ? err.message : '';
+      if (errMsg.toLowerCase().includes('limit')) {
+        this.disableReportButtonForDailyLimit(errMsg);
+        alert(errMsg);
+      } else {
+        alert("We couldn't generate your report right now. Your answers are saved. Please try again.");
+      }
     } finally {
-      this.btnSubmitLead.disabled = false;
-      if (btnText) btnText.textContent = 'Show My Attribution Report →';
+      if (this.getStoredDailySubmissionCount() >= 2 || this.isDailyLimitReached) {
+        this.disableReportButtonForDailyLimit();
+      } else {
+        this.btnSubmitLead.disabled = false;
+        if (btnText) btnText.textContent = 'Show My Attribution Report →';
+      }
       if (spinner) spinner.style.display = 'none';
       this.updateCRMInspector();
     }

@@ -346,16 +346,52 @@ export const apiService = {
     fullLeadRecord.recaptcha_token = recaptchaToken;
 
     // Dispatch email and Staging API sync in parallel
-    await Promise.allSettled([
+    const [emailRes] = await Promise.all([
       this.sendReportEmail(leadData.email, fullLeadRecord),
-      this.createCMGalaxyUser(leadData, fullLeadRecord)
+      this.createCMGalaxyUser(leadData, fullLeadRecord).catch(() => null)
     ]);
+
+    if (emailRes && emailRes.success === false && (emailRes.limit_reached || (emailRes.error && emailRes.error.toLowerCase().includes('limit')))) {
+      throw new Error(emailRes.error || 'Daily submission limit reached (2 reports per day).');
+    }
 
     return {
       success: true,
       leadRecord: fullLeadRecord,
       analysis
     };
+  },
+
+  /**
+   * Checks if client IP / user has reached daily submission limit (2 per day).
+   */
+  async checkSubmissionLimit(email = '') {
+    const endpoint = getApiEndpoint();
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'check_limit',
+          email: email
+        })
+      });
+      return await response.json();
+    } catch (err) {
+      if (endpoint === './send_email.php') {
+        try {
+          const fbResp = await fetch('https://d2c.cmgalaxy.com/send_email.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'check_limit', email: email })
+          });
+          return await fbResp.json();
+        } catch (fbErr) {}
+      }
+      return { success: true, allowed: true, limit_reached: false };
+    }
   },
 
   /**

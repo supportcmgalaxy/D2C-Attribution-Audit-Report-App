@@ -122,7 +122,8 @@ try {
     }
 
     // =========================================================================
-    // 1.4. CLIENT IP DETECTION & RATE LIMITING SYSTEM (3 per day limit)
+    // =========================================================================
+    // 1.4. CLIENT IP DETECTION & RATE LIMITING SYSTEM (Max 2 per day limit)
     // =========================================================================
     function getClientIp() {
         if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
@@ -136,74 +137,149 @@ try {
     }
 
     /**
-     * Checks if IP has exceeded the daily form submission limit (3 per 24 hours).
-     * If limit exceeded, automatically records IP into blocked_ips.json.
+     * Returns current submission count for user IP / email in the rolling 24-hour window.
      */
-    function checkSubmissionRateLimit($ip) {
+    function getUserSubmissionCount($ip, $email = '') {
+        $dir = __DIR__ . '/reports/.ratelimits';
+        $now = time();
+        $windowSeconds = 86400; // 24 hours
+
+        // Check if IP is blocked in blocked_ips.json
+        $blockedFile = $dir . '/blocked_ips.json';
+        if (file_exists($blockedFile)) {
+            $blockedList = json_decode(@file_get_contents($blockedFile), true);
+            if (is_array($blockedList) && isset($blockedList[$ip])) {
+                $item = $blockedList[$ip];
+                if (!empty($item['active']) && $now < ($item['expires_at'] ?? 0)) {
+                    return 999; // Flagged as blocked
+                }
+            }
+        }
+
+        $maxCount = 0;
+
+        // Check IP submit tracker
+        $ipFile = $dir . '/submit_' . md5($ip) . '.json';
+        if (file_exists($ipFile)) {
+            $data = json_decode(@file_get_contents($ipFile), true);
+            if ($data && ($now - ($data['start'] ?? 0)) <= $windowSeconds) {
+                $maxCount = max($maxCount, (int)($data['count'] ?? 0));
+            }
+        }
+
+        // Check Email submit tracker if provided
+        if (!empty($email)) {
+            $emailClean = strtolower(trim($email));
+            $emailFile = $dir . '/submit_email_' . md5($emailClean) . '.json';
+            if (file_exists($emailFile)) {
+                $data = json_decode(@file_get_contents($emailFile), true);
+                if ($data && ($now - ($data['start'] ?? 0)) <= $windowSeconds) {
+                    $maxCount = max($maxCount, (int)($data['count'] ?? 0));
+                }
+            }
+        }
+
+        return $maxCount;
+    }
+
+    /**
+     * Checks if user is permitted to request OTP or submit form (Max 2 forms per 24 hours).
+     */
+    function canUserSubmitOrRequestOtp($ip, $email = '') {
+        $maxAllowed = 2; // Strict limit: 2 submissions per 24 hours
+        $count = getUserSubmissionCount($ip, $email);
+
+        if ($count >= $maxAllowed) {
+            return [
+                'allowed' => false,
+                'limit_reached' => true,
+                'count' => $count,
+                'max_allowed' => $maxAllowed,
+                'error' => "Daily submission limit reached (Maximum {$maxAllowed} reports per day). You have already submitted {$count} audit forms today. Please try again tomorrow."
+            ];
+        }
+
+        return [
+            'allowed' => true,
+            'limit_reached' => false,
+            'count' => $count,
+            'remaining' => $maxAllowed - $count,
+            'max_allowed' => $maxAllowed
+        ];
+    }
+
+    /**
+     * Records an official completed form submission for IP and email.
+     * When count reaches >= 2, blocks the IP from further submissions for 24 hours.
+     */
+    function recordSubmissionCompleted($ip, $email = '') {
         $dir = __DIR__ . '/reports/.ratelimits';
         if (!is_dir($dir)) @mkdir($dir, 0755, true);
 
         $now = time();
-        $windowSeconds = 86400; // 24 hours (1 day)
-        $maxAllowed = 3;
+        $windowSeconds = 86400; // 24 hours
+        $maxAllowed = 2;
 
-        // Check if IP is already in blocked list
-        $blockedFile = $dir . '/blocked_ips.json';
-        $blockedList = file_exists($blockedFile) ? json_decode(@file_get_contents($blockedFile), true) : [];
-        if (!is_array($blockedList)) $blockedList = [];
-
-        if (isset($blockedList[$ip])) {
-            $item = $blockedList[$ip];
-            if (!empty($item['active']) && $now < ($item['expires_at'] ?? 0)) {
-                $hoursLeft = ceil(($item['expires_at'] - $now) / 3600);
-                return [
-                    'allowed' => false,
-                    'blocked' => true,
-                    'error' => "Daily submission limit reached (3 per day). Your IP ({$ip}) is blocked. Please try again in {$hoursLeft} hour(s)."
-                ];
-            }
-        }
-
+        // 1. IP Tracker
         $ipFile = $dir . '/submit_' . md5($ip) . '.json';
-        $record = file_exists($ipFile) ? json_decode(@file_get_contents($ipFile), true) : null;
-
-        if (!$record || ($now - ($record['start'] ?? 0)) > $windowSeconds) {
-            $record = [
+        $ipRecord = file_exists($ipFile) ? json_decode(@file_get_contents($ipFile), true) : null;
+        if (!$ipRecord || ($now - ($ipRecord['start'] ?? 0)) > $windowSeconds) {
+            $ipRecord = [
                 'ip' => $ip,
                 'count' => 1,
                 'start' => $now,
                 'submissions' => [$now]
             ];
         } else {
-            $record['count'] = ($record['count'] ?? 0) + 1;
-            $record['submissions'][] = $now;
+            $ipRecord['count'] = ($ipRecord['count'] ?? 0) + 1;
+            $ipRecord['submissions'][] = $now;
+        }
+        file_put_contents($ipFile, json_encode($ipRecord, JSON_PRETTY_PRINT));
+
+        // 2. Email Tracker
+        if (!empty($email)) {
+            $emailClean = strtolower(trim($email));
+            $emailFile = $dir . '/submit_email_' . md5($emailClean) . '.json';
+            $emailRecord = file_exists($emailFile) ? json_decode(@file_get_contents($emailFile), true) : null;
+            if (!$emailRecord || ($now - ($emailRecord['start'] ?? 0)) > $windowSeconds) {
+                $emailRecord = [
+                    'email' => $emailClean,
+                    'count' => 1,
+                    'start' => $now,
+                    'submissions' => [$now]
+                ];
+            } else {
+                $emailRecord['count'] = ($emailRecord['count'] ?? 0) + 1;
+                $emailRecord['submissions'][] = $now;
+            }
+            file_put_contents($emailFile, json_encode($emailRecord, JSON_PRETTY_PRINT));
         }
 
-        file_put_contents($ipFile, json_encode($record, JSON_PRETTY_PRINT));
+        // 3. If reached >= 2 submissions, automatically place IP into blocked list
+        if ($ipRecord['count'] >= $maxAllowed) {
+            $blockedFile = $dir . '/blocked_ips.json';
+            $blockedList = file_exists($blockedFile) ? json_decode(@file_get_contents($blockedFile), true) : [];
+            if (!is_array($blockedList)) $blockedList = [];
 
-        if ($record['count'] > $maxAllowed) {
             $blockedList[$ip] = [
                 'ip' => $ip,
-                'reason' => "Exceeded daily form submission limit ({$maxAllowed} forms / 24 hours)",
-                'attempts' => $record['count'],
+                'reason' => "Completed maximum daily form submissions ({$maxAllowed} forms / 24 hours)",
+                'attempts' => $ipRecord['count'],
                 'blocked_at' => $now,
                 'expires_at' => $now + $windowSeconds,
                 'active' => true
             ];
             file_put_contents($blockedFile, json_encode($blockedList, JSON_PRETTY_PRINT));
-
-            return [
-                'allowed' => false,
-                'blocked' => true,
-                'error' => "Submission limit reached (maximum {$maxAllowed} reports per day from one IP). Your IP has been temporarily blocked for 24 hours."
-            ];
         }
 
-        return [
-            'allowed' => true,
-            'count' => $record['count'],
-            'remaining' => $maxAllowed - $record['count']
-        ];
+        return $ipRecord['count'];
+    }
+
+    /**
+     * Legacy wrapper for submission limit check
+     */
+    function checkSubmissionRateLimit($ip) {
+        return canUserSubmitOrRequestOtp($ip);
     }
 
     /**
@@ -459,11 +535,45 @@ try {
     }
 
     // -------------------------------------------------------------------------
+    // ACTION: CHECK DAILY SUBMISSION LIMIT
+    // -------------------------------------------------------------------------
+    if (isset($data['action']) && $data['action'] === 'check_limit') {
+        $clientIp = getClientIp();
+        $email = filter_var(trim($data['email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: '';
+        $subQuota = canUserSubmitOrRequestOtp($clientIp, $email);
+        echo json_encode([
+            'success' => true,
+            'allowed' => $subQuota['allowed'],
+            'limit_reached' => !$subQuota['allowed'],
+            'submissions_used' => $subQuota['count'],
+            'remaining' => $subQuota['remaining'] ?? 0,
+            'max_allowed' => 2,
+            'error' => $subQuota['allowed'] ? null : $subQuota['error']
+        ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
     // ACTION: SEND OTP
     // -------------------------------------------------------------------------
     if (isset($data['action']) && ($data['action'] === 'send_otp' || $data['action'] === 'sendotp')) {
-        // Rate limit OTP requests by client IP (Max 10 per 24 hours)
         $clientIp = getClientIp();
+        $email = filter_var(trim($data['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+
+        // 1. Check daily submission limit (Max 2 per day) - On 3rd attempt, DO NOT SEND OTP!
+        $subQuota = canUserSubmitOrRequestOtp($clientIp, $email ?: '');
+        if (!$subQuota['allowed']) {
+            echo json_encode([
+                'success' => false,
+                'error' => $subQuota['error'],
+                'limit_reached' => true,
+                'submissions_used' => $subQuota['count'],
+                'max_allowed' => 2
+            ]);
+            exit;
+        }
+
+        // 2. Rate limit OTP requests by client IP (Max 10 per 24 hours)
         $ipOtpCheck = checkOtpRateLimit($clientIp);
         if (!$ipOtpCheck['allowed']) {
             echo json_encode(['success' => false, 'error' => $ipOtpCheck['error']]);
@@ -478,7 +588,6 @@ try {
             exit;
         }
 
-        $email = filter_var(trim($data['email'] ?? ''), FILTER_VALIDATE_EMAIL);
         if (!$email) {
             echo json_encode(['success' => false, 'error' => 'Please enter a valid work email address.']);
             exit;
@@ -656,7 +765,7 @@ try {
     $userCompany = htmlspecialchars($data['lead']['company'] ?? 'N/A');
     $auditId     = htmlspecialchars($data['id'] ?? 'N/A');
     $submittedAt = htmlspecialchars($data['submittedAt'] ?? date('c'));
-    $submissionDate = date('F j, Y - H:i') . ' IST';
+    $submissionDate = date('M j, Y - H:i') . ' IST';
     $answers     = $data['answers'] ?? [];
 
     if (!$userEmail) {
@@ -696,14 +805,17 @@ try {
     }
 
     // =========================================================================
-    // 2.2. IP RATE LIMIT: MAXIMUM 3 SUBMISSIONS PER IP PER 24 HOURS
+    // 2.2. IP & EMAIL RATE LIMIT: MAXIMUM 2 SUBMISSIONS PER USER PER 24 HOURS
     // =========================================================================
     $clientIp = getClientIp();
-    $rateLimitCheck = checkSubmissionRateLimit($clientIp);
+    $rateLimitCheck = canUserSubmitOrRequestOtp($clientIp, $userEmail);
     if (!$rateLimitCheck['allowed']) {
         echo json_encode([
             'success' => false,
-            'error' => $rateLimitCheck['error']
+            'error' => $rateLimitCheck['error'],
+            'limit_reached' => true,
+            'submissions_used' => $rateLimitCheck['count'],
+            'max_allowed' => 2
         ]);
         exit;
     }
@@ -790,6 +902,9 @@ try {
             'gapsCount'        => $analysisData['attributionGapCount'] ?? 0,
             'investigateCount' => $analysisData['investigateCount'] ?? 0
         ]);
+
+        // Record completed submission for daily limit (Max 2 submissions per 24 hours)
+        recordSubmissionCompleted($clientIp, $userEmail);
     }
 
 

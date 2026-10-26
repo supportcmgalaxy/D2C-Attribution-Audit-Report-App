@@ -8,7 +8,7 @@
  *   - Full Form Submissions (Leads) with PDF download links
  *   - 1-Click Excel / CSV Export with UTF-8 BOM
  *   - Blocked IPs Security Management & 1-Click Unblock
- *   - Live Rate Limit Monitor (3 submissions/day per IP)
+ *   - Live Rate Limit Monitor (2 submissions/day per IP)
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -1785,7 +1785,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
             <p>
               <?php
                 if ($currentTab === 'security') echo 'Review automated spam filters and manage blacklisted IP addresses.';
-                elseif ($currentTab === 'traffic') echo 'Real-time tracking of 3 submissions per 24 hours per unique IP address.';
+                elseif ($currentTab === 'traffic') echo 'Real-time tracking of 2 submissions per 24 hours per unique IP address.';
                 else echo 'All verified form captures with lead contact details and generated PDF audit reports.';
               ?>
             </p>
@@ -1879,7 +1879,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
                 <line x1="12" y1="8" x2="12" y2="12"></line>
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
-              Exceeded 3 forms/day limit
+              Exceeded 2 forms/day limit
             </div>
           </div>
 
@@ -2014,10 +2014,40 @@ $currentTab = $_GET['tab'] ?? 'leads';
                         if (str_contains($risk, 'low')) $riskClass = 'risk-low';
                         elseif (str_contains($risk, 'critical')) $riskClass = 'risk-critical';
                         elseif (str_contains($risk, 'high')) $riskClass = 'risk-high';
+
+                        $leadTs = getLeadTimestamp($lead);
+                        $rawDate = $lead['date'] ?? '';
+                        if ($leadTs > 0) {
+                            $leadDateStr = date('M j, Y', $leadTs);
+                            $leadTimeStr = date('H:i', $leadTs) . ' IST';
+                        } elseif (!empty($rawDate)) {
+                            // Fallback string parser: convert full month to 3 letters
+                            $shortDate = str_replace(
+                                ['January','February','March','April','May','June','July','August','September','October','November','December'],
+                                ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+                                $rawDate
+                            );
+                            if (strpos($shortDate, ' - ') !== false) {
+                                list($leadDateStr, $leadTimeStr) = explode(' - ', $shortDate, 2);
+                            } else {
+                                $leadDateStr = $shortDate;
+                                $leadTimeStr = '';
+                            }
+                        } else {
+                            $leadDateStr = 'N/A';
+                            $leadTimeStr = '';
+                        }
                       ?>
                       <tr>
-                        <td style="white-space: nowrap; font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
-                          <?= htmlspecialchars($lead['date'] ?? 'N/A') ?>
+                        <td style="white-space: nowrap; font-family: var(--font-mono); line-height: 1.45;">
+                          <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
+                            <?= htmlspecialchars($leadDateStr) ?>
+                          </div>
+                          <?php if (!empty($leadTimeStr)): ?>
+                            <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+                              <?= htmlspecialchars($leadTimeStr) ?>
+                            </div>
+                          <?php endif; ?>
                         </td>
                         <td>
                           <strong style="color: var(--text-main); font-weight: 700;">
@@ -2160,8 +2190,13 @@ $currentTab = $_GET['tab'] ?? 'leads';
                         <td style="font-family: var(--font-mono); font-weight: 700;">
                           <?= (int)($item['attempts'] ?? 0) ?>
                         </td>
-                        <td style="font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
-                          <?= date('M j, Y - H:i', $item['blocked_at'] ?? time()) ?>
+                        <td style="white-space: nowrap; font-family: var(--font-mono); line-height: 1.45;">
+                          <div style="font-weight: 700; color: var(--text-main); font-size: 12.5px;">
+                            <?= date('M j, Y', $item['blocked_at'] ?? time()) ?>
+                          </div>
+                          <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+                            <?= date('H:i', $item['blocked_at'] ?? time()) ?> IST
+                          </div>
                         </td>
                         <td>
                           <?php if ($isStillActive): ?>
@@ -2205,7 +2240,7 @@ $currentTab = $_GET['tab'] ?? 'leads';
                   </svg>
                   24-Hour Rolling IP Limit Tracker
                 </div>
-                <div class="table-card-sub">Global Rule: Each unique IP address is permitted up to 3 form submissions every 24 hours</div>
+                <div class="table-card-sub">Global Rule: Each unique IP address is permitted up to 2 form submissions every 24 hours</div>
               </div>
               <span class="sys-pulse-badge">
                 <span class="pulse-dot"></span>
@@ -2236,8 +2271,8 @@ $currentTab = $_GET['tab'] ?? 'leads';
                     <?php foreach ($activeTrackers as $trk): ?>
                       <?php
                         $used = (int)($trk['count'] ?? 0);
-                        $rem = max(0, 3 - $used);
-                        $isBlocked = $used >= 3;
+                        $rem = max(0, 2 - $used);
+                        $isBlocked = $used >= 2;
                       ?>
                       <tr>
                         <td>
@@ -2245,19 +2280,24 @@ $currentTab = $_GET['tab'] ?? 'leads';
                         </td>
                         <td>
                           <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-family: var(--font-mono); font-weight: 800; color: <?= $isBlocked ? '#DC2626' : ($used === 2 ? '#D97706' : '#059669') ?>">
-                              <?= $used ?> / 3
+                            <span style="font-family: var(--font-mono); font-weight: 800; color: <?= $isBlocked ? '#DC2626' : ($used === 1 ? '#D97706' : '#059669') ?>">
+                              <?= $used ?> / 2
                             </span>
                             <div style="width: 70px; height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden;">
-                              <div style="width: <?= min(100, ($used / 3) * 100) ?>%; height: 100%; background: <?= $isBlocked ? '#DC2626' : ($used === 2 ? '#D97706' : '#10B981') ?>;"></div>
+                              <div style="width: <?= min(100, ($used / 2) * 100) ?>%; height: 100%; background: <?= $isBlocked ? '#DC2626' : ($used === 1 ? '#D97706' : '#10B981') ?>;"></div>
                             </div>
                           </div>
                         </td>
                         <td style="font-family: var(--font-mono); font-size: 13px; font-weight: 600;">
                           <?= $rem ?> remaining
                         </td>
-                        <td style="font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono);">
-                          <?= date('M j, Y - H:i', $trk['start'] ?? time()) ?>
+                        <td style="white-space: nowrap; font-family: var(--font-mono); line-height: 1.45;">
+                          <div style="font-weight: 700; color: var(--text-main); font-size: 12.5px;">
+                            <?= date('M j, Y', $trk['start'] ?? time()) ?>
+                          </div>
+                          <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+                            <?= date('H:i', $trk['start'] ?? time()) ?> IST
+                          </div>
                         </td>
                         <td>
                           <?php if ($isBlocked): ?>
