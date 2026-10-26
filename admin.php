@@ -1086,8 +1086,9 @@ $currentTab = $_GET['tab'] ?? 'leads';
     /* Main Content Container */
     .main-content-inner {
       padding: 28px 28px 60px;
-      max-width: 1400px;
+      max-width: 100%;
       width: 100%;
+      box-sizing: border-box;
     }
 
     .page-header-row {
